@@ -96,11 +96,13 @@ fall back to another file. The former legacy token path is used only when select
 explicitly. Obtain an accepted token from the service administrator; CABOODLE can
 install and verify it without rotating the server credential.
 
-A missing, unreadable, invalid or rejected credential emits one diagnostic and
-disables later writes to that server for the session. With a harness session ID,
+A missing, unreadable, invalid or rejected credential disables later writes to
+that server for the session. Deliberate CLI writes emit one diagnostic; disk
+hooks instead record a `quipu_auth_failure` event with its reason and scope in
+the metrics spool, without printing to stdout or stderr. With a harness session ID,
 a private marker under the Yupana state directory carries that refusal across
 hook processes. Without a session ID, or when the marker cannot be persisted,
-the diagnostic states that suppression is process only. Repair the credential and
+the diagnostic or event states that suppression is process only. Repair the credential and
 start a new session before retrying. Public reads remain available.
 
 `yupana status` reports the credential state and suppression state without

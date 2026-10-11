@@ -463,10 +463,13 @@ consume space and negative values free it. The guard projects the most recent
 `governed, not blocking` system message. There is no enforcement branch in this
 first slice.
 
-No history is **UNKNOWN**, never safe: the matching command is allowed with an
-explicit message that no Quipu-recorded basis exists. A failed history write or
-query is likewise loud fail-open. Unrelated commands do not pay for a Quipu
-round trip and remain silent. The graph vocabulary is governed by
+No history is **UNKNOWN**, never safe: the matching command is allowed without
+pane output, while a `disk_guard_unknown` spool event records why no verdict was
+available. Failed history writes or queries also retain their reasons in the
+spool. Credential failures add a `quipu_auth_failure` event and disable later
+writes for the session; public reads remain available. A governed headroom warning
+still speaks. Unrelated commands do not pay for a Quipu round trip and remain
+silent. The graph vocabulary is governed by
 `CommandDiskImpactObservationShape`; deployments must accept that shape before
 expecting samples to accrue.
 

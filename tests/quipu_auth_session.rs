@@ -140,7 +140,17 @@ fn hook(
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    assert!(output.stdout.is_empty(), "UNKNOWN must not reach the pane");
     String::from_utf8_lossy(&output.stderr).to_string()
+}
+
+fn auth_failures(home: &std::path::Path) -> Vec<serde_json::Value> {
+    std::fs::read_to_string(home.join("state/yupana/metrics.jsonl"))
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .filter(|event| event["kind"] == "quipu_auth_failure")
+        .collect()
 }
 
 fn setup(root: &std::path::Path, server: &Server) {
@@ -179,7 +189,7 @@ fn hook_stdin_session_reaches_the_write_without_environment_session() {
 }
 
 #[test]
-fn rejected_auth_is_reported_once_and_survives_fresh_hook_processes() {
+fn rejected_auth_is_silent_counted_once_and_survives_fresh_hook_processes() {
     let root = tempfile::tempdir().unwrap();
     let home = tempfile::tempdir().unwrap();
     let server = Server::new(true);
@@ -195,10 +205,16 @@ fn rejected_auth_is_reported_once_and_survives_fresh_hook_processes() {
         notices.push_str(&hook(home.path(), root.path(), "session-one", None));
     }
     assert_eq!(server.knots.load(Ordering::SeqCst), 1);
-    assert_eq!(
-        notices.matches("yupana: Quipu credential rejected").count(),
-        1
+    assert!(
+        notices.is_empty(),
+        "credential failures belong in the spool"
     );
+    let failures = auth_failures(home.path());
+    assert_eq!(failures.len(), 1);
+    assert_eq!(failures[0]["reason"], "rejected (HTTP 401)");
+    assert!(!serde_json::to_string(&failures)
+        .unwrap()
+        .contains("fixture-rejected-secret"));
     assert!(!notices.contains("fixture-rejected-secret"));
     assert!(
         server.queries.load(Ordering::SeqCst) >= 4,
@@ -245,10 +261,13 @@ fn missing_explicit_file_never_falls_back_or_attempts_a_write() {
         ));
     }
     assert_eq!(server.knots.load(Ordering::SeqCst), 0);
-    assert_eq!(
-        notices.matches("yupana: Quipu credential missing").count(),
-        1
+    assert!(
+        notices.is_empty(),
+        "missing credentials belong in the spool"
     );
+    let failures = auth_failures(home.path());
+    assert_eq!(failures.len(), 1);
+    assert_eq!(failures[0]["reason"], "missing");
     for _ in 0..3 {
         hook(home.path(), root.path(), "valid-session", None);
     }
