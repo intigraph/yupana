@@ -1,4 +1,4 @@
-Script started on 2026-10-10 22:40:43-04:00 [COMMAND="bash run.sh" <not executed on terminal>]
+Script started on 2026-10-10 22:43:40-04:00 [COMMAND="stty -onlcr; bash run.sh" <not executed on terminal>]
 BEFORE: released 0.12.5; private localhost 401 + WARN control
 {"case": "unknown-no-history", "exit": 0, "stdout_bytes": 0, "stderr_lines": 0, "warn_visible": false}
 {"case": "unknown-failed-write", "exit": 0, "stdout_bytes": 0, "stderr_lines": 1, "warn_visible": false}
@@ -10,4 +10,4 @@ AFTER: private candidate; same probe
 {"case": "positive-governed-warn", "exit": 0, "stdout_bytes": 321, "stderr_lines": 0, "warn_visible": true}
 {"binary_sha256": "18e7f2659412ee872ac86879201800cc66c7d7195d31e72a79be341089956be5", "unknown_reason_events": 2, "auth_failure_events": 1}
 
-Script done on 2026-10-10 22:40:44-04:00 [COMMAND_EXIT_CODE="0"]
+Script done on 2026-10-10 22:43:41-04:00 [COMMAND_EXIT_CODE="0"]
