@@ -1,2 +1,5 @@
 # Normalize line endings
 * text=auto eol=lf
+
+# Terminal recordings retain bytes matched by their timing log.
+docs/demos/hook-credential-quiet/output.log -text
