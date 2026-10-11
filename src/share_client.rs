@@ -323,15 +323,14 @@ fn post(
     what: &str,
 ) -> Result<serde_json::Value> {
     let url = format!("{}{route}", base.trim_end_matches('/'));
-    let mut req = ureq::post(&url)
+    let mut req = crate::quipu_label::json_post(&url, "yupana-share")
         .timeout(std::time::Duration::from_secs(300))
         .set("Content-Type", "application/json")
         // quipu attributes request time per caller and falls back to
         // User-Agent, which collapses every tool into one bucket.
         .set("X-Quipu-Client", "yupana-share");
-    if let Some(token) = crate::promote::quipu_auth_token() {
-        req = req.set("Authorization", &format!("Bearer {token}"));
-    }
+    let token = crate::quipu_auth::require(base, None).map_err(Error::Share)?;
+    req = req.set("Authorization", &format!("Bearer {token}"));
     match req.send_string(&body.to_string()) {
         Ok(resp) => {
             let text = resp
@@ -349,7 +348,10 @@ fn post(
              (GET {}/version).",
             base.trim_end_matches('/')
         ))),
-        Err(ureq::Error::Status(401 | 403, _)) => Err(Error::Share(format!(
+        Err(ureq::Error::Status(401, _)) => {
+            Err(Error::Share(crate::quipu_auth::rejected(base, None)))
+        }
+        Err(ureq::Error::Status(403, _)) => Err(Error::Share(format!(
             "{url} refused the credential. {route} is a WRITE endpoint and needs quipu's \
              bearer: set QUIPU_AUTH_TOKEN, or QUIPU_AUTH_TOKEN_FILE / ~/.config/quipu/token. \
              Reads on this endpoint stay open, so a working `yupana impact` proves nothing \

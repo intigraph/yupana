@@ -67,6 +67,9 @@ pub mod grounding;
 pub mod hook;
 pub mod hooks_install;
 pub mod hosting;
+#[cfg(feature = "quipu")]
+pub mod keyword_refresh;
+pub mod keywords;
 /// The action selector for LANDINGS — `git push` / `gh pr merge` — which the
 /// governed single-writer policy is written against.
 pub mod landing;
@@ -142,9 +145,13 @@ pub mod promote_subset_cli;
 /// without `quipu`, where it decides whether the feature-off refusal is even
 /// reached.
 pub mod promote_trigger;
+#[cfg(feature = "quipu")]
+mod quipu_auth;
 /// Which yupana caller a quipu request came from (`X-Quipu-Client`).
 #[cfg(feature = "quipu")]
 pub mod quipu_label;
+#[cfg(feature = "quipu")]
+mod quipu_provenance;
 pub mod reconcile;
 pub mod recurrence;
 mod render;

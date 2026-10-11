@@ -218,3 +218,53 @@ fn an_UNPARSEABLE_payload_still_claims_the_item_rather_than_leaving_a_hole() {
         "the early return must claim `item` too: {fields:?}"
     );
 }
+
+/// Native transport completion is not evidence of process success.
+#[test]
+fn native_exec_requires_typed_exit_status() {
+    for (response, expected) in [
+        (serde_json::json!(""), "unknown"),
+        (serde_json::json!({}), "unknown"),
+        (serde_json::json!({"exit_code": "0"}), "unknown"),
+        (serde_json::json!({"exit_code": 0}), "ok"),
+        (serde_json::json!({"exit_code": 42}), "error"),
+        (
+            serde_json::json!({"exit_code": 0, "interrupted": true}),
+            "unknown",
+        ),
+    ] {
+        let fields = fields_of(&payload("PostToolUse", Some("exec-fixture"), &response));
+        assert_eq!(
+            field(&fields, "outcome").and_then(serde_json::Value::as_str),
+            Some(expected)
+        );
+        assert_eq!(
+            field(&fields, "action_id").and_then(serde_json::Value::as_str),
+            Some("exec-fixture")
+        );
+    }
+}
+
+#[test]
+fn native_completed_marker_and_unknown_events_cannot_guess_success() {
+    let response = serde_json::json!({"completed": true, "exit_code": 0});
+    let native = fields_of(&payload("PostToolUse", Some("call-native"), &response));
+    assert_eq!(
+        field(&native, "outcome").and_then(serde_json::Value::as_str),
+        Some("ok")
+    );
+    let absent = fields_of(&payload(
+        "PostToolUse",
+        Some("call-native"),
+        &serde_json::json!({"completed": true}),
+    ));
+    assert_eq!(
+        field(&absent, "outcome").and_then(serde_json::Value::as_str),
+        Some("unknown")
+    );
+    let unknown = fields_of(&payload("PreToolUse", Some("exec-fixture"), &response));
+    assert_eq!(
+        field(&unknown, "outcome").and_then(serde_json::Value::as_str),
+        Some("unknown")
+    );
+}

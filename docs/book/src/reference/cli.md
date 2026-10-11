@@ -14,7 +14,7 @@ COMMANDS:
     impact      Blast radius; --cochange reconciles against history (FR-11)
     dataflow    Local data dependence, or opt-in Rust CPG flow across calls
     export      Emit the referential structure as Turtle (bobbin: ontology)
-    hook        Harness hook adapter (post-edit advisory / pre-edit guard)
+    hook        Harness hook adapter (post-edit / pre-edit / post-read)
     verify      Verdict on a proposed edit buffer (FR-23/FR-24)
     audit-rule  Replay an explicit structural rule on supplied source, offline
     rule-test   Run governed text rules on sample cases, no side effects [quipu feature]
@@ -86,6 +86,27 @@ requiring the write to be spelled out on the command line is the fix.
 The MCP `yupana_promote` tool keeps its own fallback to the configured endpoint:
 there the target comes from a server an operator deliberately started and pointed
 somewhere, not from whatever config happens to be ambient in an agent's shell.
+
+### Quipu write credentials
+
+Promotion, share writes and disk-impact hook observations use the same credential
+order: a nonempty, trimmed `QUIPU_AUTH_TOKEN`, then `QUIPU_AUTH_TOKEN_FILE`, then
+`~/.config/quipu/token`. An explicit file that is missing or unreadable does not
+fall back to another file. The former legacy token path is used only when selected
+explicitly. Obtain an accepted token from the service administrator; CABOODLE can
+install and verify it without rotating the server credential.
+
+A missing, unreadable, invalid or rejected credential emits one diagnostic and
+disables later writes to that server for the session. With a harness session ID,
+a private marker under the Yupana state directory carries that refusal across
+hook processes. Without a session ID, or when the marker cannot be persisted,
+the diagnostic states that suppression is process only. Repair the credential and
+start a new session before retrying. Public reads remain available.
+
+`yupana status` reports the credential state and suppression state without
+printing a token or making a write. `configured_acceptance_unproven` means a
+credential was found, not that the server accepted it; use `caboodle doctor` for
+an authenticated verification.
 
 ## `yupana promote --dry-run` — validate without writing
 

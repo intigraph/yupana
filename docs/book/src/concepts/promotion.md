@@ -79,6 +79,25 @@ how many chunks landed.
 
 ## Commit provenance — what work touched this entity
 
+Quipu write requests also carry structured writer headers: `X-Quipu-Agent`,
+`X-Quipu-Harness`, `X-Quipu-Model`, `X-Quipu-Session`, and `X-Quipu-Host`.
+The corresponding `QUIPU_AGENT`, `QUIPU_HARNESS`, `QUIPU_MODEL`,
+`QUIPU_SESSION`, and `QUIPU_HOST` environment overrides win. Otherwise active
+Claude/Codex sessions supply `SHANTY_AGENT` and `SHANTY_MODEL`; Codex uses
+`CODEX_SESSION_ID` before `CODEX_THREAD_ID`, and Claude uses
+`CLAUDE_CODE_SESSION_ID`. Without an active session, the producer names itself
+and uses `cli` (or `service` for daemon/MCP). Scheduled wrappers can declare
+`QUIPU_HARNESS=cron`. Host identity comes from the platform `hostname` command.
+Unknown fields are omitted, and values are sanitized to printable ASCII and
+limited to 128 characters. Missing session/model remains partial provenance
+rather than a guessed identity. Existing caller-kind and authorization headers
+are retained. This applies to promotion, disk observations, and share writes.
+
+For disk observations from a harness hook, an omitted session header is filled
+from the hook payload's `session_id`. An existing declared header takes
+precedence. Unknown sessions remain omitted; this fallback changes request
+attribution only, preserving authentication and its session refusal markers.
+
 Every promotion also writes the commit it promoted, and one edge per code module
 that commit changed (spec §9.7):
 
