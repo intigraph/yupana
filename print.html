@@ -1863,6 +1863,15 @@ yupana serve --http     # streamable-HTTP at http://127.0.0.1:3040/mcp
 <tr><td><code>yupana_path_check</code></td><td>Conformance of a plan or work-in-progress against a blessed golden path under gp-grammar/1 (FR-41/FR-42; needs the <code>golden-path</code> feature)</td></tr>
 </tbody></table>
 </div>
+<p><code>yupana_symbols</code> enumerates the same code graph as callers and impact: the
+expected root-matching resident daemon when available, otherwise the transient
+multi-language graph. Relative and absolute paths within the analysis root are
+accepted, including cached files deleted from the working tree. When the graph holds no symbols for a file, the tool returns an error;
+that absence cannot distinguish an unindexed, unsupported or symbol-less file.
+It never reports that such a file is empty. Each symbol retains its tier and
+start line. End lines are served when known from the transient graph and omitted
+when the resident protocol does not carry them; the tool does not re-parse a
+newer file to invent extents for an older snapshot.</p>
 <p>The last three are the <strong>game-state harness</strong>. They are registered on every
 build, as <code>yupana_promote</code> is, and refuse with a message naming the feature when
 it is absent — a tool that accepted a board and silently did nothing would be
