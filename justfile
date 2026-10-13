@@ -44,6 +44,11 @@ test *args="":
     just session-guard --selftest
     python3 tests/session_depth.py
     just install-tests
+    just release-tests
+
+# Exercise draft/upload/publish ordering without contacting a public forge.
+release-tests:
+    python3 tests/release_publication.py
 
 # Run the linter (matches CI: deny warnings, allow missing-docs)
 # --all-targets so TESTS are linted too. Without it the lint gate skipped every
@@ -61,6 +66,7 @@ run *args="":
     cargo run -- {{args}}
 
 # Build the CURRENT CHECKOUT, including uncommitted source. Not a release install.
+# Stamps +local.<sha>[.dirty]; temporary on shared hosts until a newer release.
 # Override YUPANA_INSTALL_ROOT for a non-default prefix.
 install:
     scripts/install-local.sh
