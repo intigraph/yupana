@@ -96,13 +96,51 @@ pub fn outcome_fields(
     // THE JOIN. Omitted rather than blanked when the harness supplied none: a
     // reader must be able to tell "no id on this payload" (join impossible for
     // this row) from "the id was empty" (a bug).
-    if let Some(id) = input.tool_use_id {
+    if let Some(id) = input.tool_use_id.as_deref() {
         fields.push(("action_id", id.into()));
     }
-    fields.push((
-        "outcome",
-        outcome_of(input.hook_event_name.as_deref()).into(),
-    ));
+    // Native exec bridges report transport completion even for a nonzero
+    // process exit. Their exec correlation ids identify that contract; the
+    // event alone must never manufacture process success.
+    let native_exec = input
+        .tool_use_id
+        .as_deref()
+        .is_some_and(|id| id.starts_with("exec-"))
+        || input
+            .tool_response
+            .get("completed")
+            .and_then(serde_json::Value::as_bool)
+            == Some(true);
+    let exit_code = input
+        .tool_response
+        .get("exit_code")
+        .and_then(serde_json::Value::as_i64);
+    let interrupted = input
+        .tool_response
+        .get("interrupted")
+        .and_then(serde_json::Value::as_bool);
+    let outcome = if native_exec {
+        if interrupted == Some(true)
+            || !matches!(
+                input.hook_event_name.as_deref(),
+                Some("PostToolUse" | "PostToolUseFailure")
+            )
+        {
+            "unknown"
+        } else {
+            match exit_code {
+                Some(0) => "ok",
+                Some(_) => "error",
+                None => "unknown",
+            }
+        }
+    } else {
+        outcome_of(input.hook_event_name.as_deref())
+    };
+    fields.push(("outcome", outcome.into()));
+    if let Some(code) = exit_code {
+        fields.push(("exit_code", code.into()));
+    }
     // The HARNESS's measurement, not ours. A hook cannot time a call that
     // already finished before it started.
     if let Some(ms) = input.duration_ms {
