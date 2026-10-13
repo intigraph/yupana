@@ -50,6 +50,15 @@ pub enum Selection {
 pub fn decode_map(body: &str) -> Result<Vec<CiCheck>> {
     let value: serde_json::Value = serde_json::from_str(body)
         .map_err(|e| Error::Projection(format!("CI-map results are not JSON: {e}")))?;
+    if value.get("error").is_some()
+        || value
+            .get("truncated")
+            .is_some_and(|flag| flag != &serde_json::Value::Bool(false))
+    {
+        return Err(Error::Projection(
+            "CI-map results are failed, truncated, or have an invalid coverage marker".into(),
+        ));
+    }
     let rows = value
         .get("results")
         .and_then(|r| r.get("bindings"))
@@ -63,16 +72,23 @@ pub fn decode_map(body: &str) -> Result<Vec<CiCheck>> {
             row.get(key)
                 .and_then(|value| value.get("value"))
                 .and_then(serde_json::Value::as_str)
+                .filter(|value| !value.trim().is_empty())
                 .map(str::to_owned)
                 .ok_or_else(|| {
                     Error::Projection(format!("CI-map row {i}: missing required binding `{key}`"))
                 })
         };
         let id = required("job")?;
+        let scope = required("scope")?;
+        if glob::Pattern::new(&scope).is_err() {
+            return Err(Error::Projection(format!(
+                "CI-map row {i}: invalid scope glob `{scope}`"
+            )));
+        }
         let next = CiCheck {
             label: required("label")?,
             command: required("command")?,
-            scopes: vec![required("scope")?],
+            scopes: vec![scope],
             id: id.clone(),
         };
         match checks.get_mut(&id) {
@@ -100,6 +116,17 @@ pub fn select(checks: &[CiCheck], changed: &[PathBuf]) -> Selection {
     if checks.is_empty() {
         return Selection::Unknown;
     }
+    // Public callers can construct checks without decode_map. An invalid
+    // scope must invalidate the whole selection, never become a quiet miss.
+    if checks.iter().any(|check| {
+        check.scopes.is_empty()
+            || check
+                .scopes
+                .iter()
+                .any(|scope| scope.trim().is_empty() || glob::Pattern::new(scope).is_err())
+    }) {
+        return Selection::Unknown;
+    }
     let selected: Vec<CiCheck> = checks
         .iter()
         .filter(|check| {
@@ -119,6 +146,10 @@ pub fn select(checks: &[CiCheck], changed: &[PathBuf]) -> Selection {
         Selection::Checks(selected)
     }
 }
+
+#[cfg(test)]
+#[path = "ci_shift_validation_tests.rs"]
+mod validation_tests;
 
 /// One completed local equivalent, written by a background worker.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
