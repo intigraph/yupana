@@ -546,3 +546,22 @@ coverage for edits performed through arbitrary shell commands.
 `guard` records in the metrics spool measure edit evaluations. Signed
 `landing-*` certifications measure push/merge evaluations: the two populations
 must not be combined when assessing a landing-policy soak.
+
+## CI-map coverage
+
+The pre-push CI advisory reads governed `CiJob` → `LocalCommand` mappings and
+intersects their path globs with the outgoing change. A complete map with no
+matching scope is quiet; an absent map is UNKNOWN. Under the existing noise
+policy, the latter is counted as `ci_shift_unknown` in the metrics spool.
+
+Failed or truncated projections are refused before selecting commands. Invalid
+coverage markers, malformed globs, and blank job, label, command or scope bindings
+also refuse the projection. Direct callers of the selector receive UNKNOWN for
+an invalid or empty scope list, even when another check would match. Partial
+knowledge must not certify that a push is unaffected or run a partial check set.
+
+These checks validate map integrity, not command trust or repository isolation.
+The current selector matches repository-relative paths; common paths can match
+in different repositories. Review repository identity, command authority,
+execution budgets and result attribution before arming a cross-repository map.
+Local checks supplement complete hosted CI and independent review.
