@@ -1264,11 +1264,13 @@ order: a nonempty, trimmed <code>QUIPU_AUTH_TOKEN</code>, then <code>QUIPU_AUTH_
 fall back to another file. The former legacy token path is used only when selected
 explicitly. Obtain an accepted token from the service administrator; CABOODLE can
 install and verify it without rotating the server credential.</p>
-<p>A missing, unreadable, invalid or rejected credential emits one diagnostic and
-disables later writes to that server for the session. With a harness session ID,
+<p>A missing, unreadable, invalid or rejected credential disables later writes to
+that server for the session. Deliberate CLI writes emit one diagnostic; disk
+hooks instead record a <code>quipu_auth_failure</code> event with its reason and scope in
+the metrics spool, without printing to stdout or stderr. With a harness session ID,
 a private marker under the Yupana state directory carries that refusal across
 hook processes. Without a session ID, or when the marker cannot be persisted,
-the diagnostic states that suppression is process only. Repair the credential and
+the diagnostic or event states that suppression is process only. Repair the credential and
 start a new session before retrying. Public reads remain available.</p>
 <p><code>yupana status</code> reports the credential state and suppression state without
 printing a token or making a write. <code>configured_acceptance_unproven</code> means a
@@ -2520,10 +2522,13 @@ consume space and negative values free it. The guard projects the most recent
 100 samples and uses their nearest-rank p90. If p90 exceeds 80% of current headroom, it emits a
 <code>governed, not blocking</code> system message. There is no enforcement branch in this
 first slice.</p>
-<p>No history is <strong>UNKNOWN</strong>, never safe: the matching command is allowed with an
-explicit message that no Quipu-recorded basis exists. A failed history write or
-query is likewise loud fail-open. Unrelated commands do not pay for a Quipu
-round trip and remain silent. The graph vocabulary is governed by
+<p>No history is <strong>UNKNOWN</strong>, never safe: the matching command is allowed without
+pane output, while a <code>disk_guard_unknown</code> spool event records why no verdict was
+available. Failed history writes or queries also retain their reasons in the
+spool. Credential failures add a <code>quipu_auth_failure</code> event and disable later
+writes for the session; public reads remain available. A governed headroom warning
+still speaks. Unrelated commands do not pay for a Quipu round trip and remain
+silent. The graph vocabulary is governed by
 <code>CommandDiskImpactObservationShape</code>; deployments must accept that shape before
 expecting samples to accrue.</p>
 <h2 id="what-the-guard-checks"><a class="header" href="#what-the-guard-checks">What the guard checks</a></h2>
