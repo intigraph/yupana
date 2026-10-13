@@ -10,6 +10,12 @@ const HELP: &str = "checked QUIPU_AUTH_TOKEN > QUIPU_AUTH_TOKEN_FILE > ~/.config
 static DISABLED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
 #[derive(Clone, Copy)]
+enum Diagnostics {
+    Cli,
+    Hook,
+}
+
+#[derive(Clone, Copy)]
 pub(crate) enum Failure {
     Missing,
     Unreadable,
@@ -136,7 +142,12 @@ fn record_marker(path: &Path, reason: &str) -> std::io::Result<bool> {
     }
 }
 
-fn refuse(endpoint: &str, session: Option<&str>, reason: Failure) -> String {
+fn refuse(
+    endpoint: &str,
+    session: Option<&str>,
+    reason: Failure,
+    diagnostics: Diagnostics,
+) -> String {
     if let Ok(mut cache) = DISABLED.get_or_init(Default::default).lock() {
         if cache.insert(key(endpoint, session)) {
             let (first, scope) = match marker(endpoint, session) {
@@ -147,10 +158,16 @@ fn refuse(endpoint: &str, session: Option<&str>, reason: Failure) -> String {
                 None => (true, "process only (no harness session ID)"),
             };
             if first {
-                eprintln!(
-                    "yupana: Quipu credential {}; {HELP}; writes disabled for this {scope}",
-                    reason.name()
-                );
+                match diagnostics {
+                    Diagnostics::Cli => eprintln!(
+                        "yupana: Quipu credential {}; {HELP}; writes disabled for this {scope}",
+                        reason.name()
+                    ),
+                    Diagnostics::Hook => crate::metrics::emit(
+                        "quipu_auth_failure",
+                        &[("reason", reason.name().into()), ("scope", scope.into())],
+                    ),
+                }
             }
         }
     }
@@ -162,6 +179,19 @@ fn refuse(endpoint: &str, session: Option<&str>, reason: Failure) -> String {
 
 /// A write needs a credential; an explicit hook session overrides ambient metadata.
 pub(crate) fn require(endpoint: &str, session: Option<&str>) -> Result<String, String> {
+    require_with_diagnostics(endpoint, session, Diagnostics::Cli)
+}
+
+/// Hook failures stay observable in the spool without printing over the pane.
+pub(crate) fn require_for_hook(endpoint: &str, session: Option<&str>) -> Result<String, String> {
+    require_with_diagnostics(endpoint, session, Diagnostics::Hook)
+}
+
+fn require_with_diagnostics(
+    endpoint: &str,
+    session: Option<&str>,
+    diagnostics: Diagnostics,
+) -> Result<String, String> {
     let ambient = ambient_session();
     let session = session.or(ambient.as_deref());
     if disabled(endpoint, session) {
@@ -172,15 +202,31 @@ pub(crate) fn require(endpoint: &str, session: Option<&str>) -> Result<String, S
     }
     match token_result() {
         Ok(Some(token)) => Ok(token),
-        Ok(None) => Err(refuse(endpoint, session, Failure::Missing)),
-        Err(reason) => Err(refuse(endpoint, session, reason)),
+        Ok(None) => Err(refuse(endpoint, session, Failure::Missing, diagnostics)),
+        Err(reason) => Err(refuse(endpoint, session, reason, diagnostics)),
     }
 }
 
 /// Record a definite authentication refusal without echoing the response body.
 pub(crate) fn rejected(endpoint: &str, session: Option<&str>) -> String {
     let ambient = ambient_session();
-    refuse(endpoint, session.or(ambient.as_deref()), Failure::Rejected)
+    refuse(
+        endpoint,
+        session.or(ambient.as_deref()),
+        Failure::Rejected,
+        Diagnostics::Cli,
+    )
+}
+
+/// A rejected hook write retains the same session latch and quiet diagnostics.
+pub(crate) fn rejected_for_hook(endpoint: &str, session: Option<&str>) -> String {
+    let ambient = ambient_session();
+    refuse(
+        endpoint,
+        session.or(ambient.as_deref()),
+        Failure::Rejected,
+        Diagnostics::Hook,
+    )
 }
 
 /// Non-mutating status: configured is not accepted authentication.

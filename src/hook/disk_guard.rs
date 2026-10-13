@@ -287,7 +287,7 @@ fn post_sample(
     // The harness supplies session_id in stdin even when its hook process has
     // no session environment variable. Reuse that observed value, not a guess.
     request = crate::quipu_provenance::with_hook_session(request, session);
-    let token = crate::quipu_auth::require(endpoint, session)?;
+    let token = crate::quipu_auth::require_for_hook(endpoint, session)?;
     request = request.set("Authorization", &format!("Bearer {token}"));
     let body =
         serde_json::json!({"turtle": turtle, "actor": "yupana", "source": "command-disk-impact"})
@@ -296,7 +296,7 @@ fn post_sample(
         .timeout(std::time::Duration::from_secs(3))
         .send_string(&body)
         .map_err(|error| match error {
-            ureq::Error::Status(401, _) => crate::quipu_auth::rejected(endpoint, session),
+            ureq::Error::Status(401, _) => crate::quipu_auth::rejected_for_hook(endpoint, session),
             _ => error.to_string(),
         })?;
     let response_body = response
