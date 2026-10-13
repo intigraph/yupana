@@ -2580,6 +2580,21 @@ coverage for edits performed through arbitrary shell commands.</p>
 <p><code>guard</code> records in the metrics spool measure edit evaluations. Signed
 <code>landing-*</code> certifications measure push/merge evaluations: the two populations
 must not be combined when assessing a landing-policy soak.</p>
+<h2 id="ci-map-coverage"><a class="header" href="#ci-map-coverage">CI-map coverage</a></h2>
+<p>The pre-push CI advisory reads governed <code>CiJob</code> → <code>LocalCommand</code> mappings and
+intersects their path globs with the outgoing change. A complete map with no
+matching scope is quiet; an absent map is UNKNOWN. Under the existing noise
+policy, the latter is counted as <code>ci_shift_unknown</code> in the metrics spool.</p>
+<p>Failed or truncated projections are refused before selecting commands. Invalid
+coverage markers, malformed globs, and blank job, label, command or scope bindings
+also refuse the projection. Direct callers of the selector receive UNKNOWN for
+an invalid or empty scope list, even when another check would match. Partial
+knowledge must not certify that a push is unaffected or run a partial check set.</p>
+<p>These checks validate map integrity, not command trust or repository isolation.
+The current selector matches repository-relative paths; common paths can match
+in different repositories. Review repository identity, command authority,
+execution budgets and result attribution before arming a cross-repository map.
+Local checks supplement complete hosted CI and independent review.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="replay-measuring-a-rule-before-it-refuses-anything"><a class="header" href="#replay-measuring-a-rule-before-it-refuses-anything">Replay: measuring a rule before it refuses anything</a></h1>
 <p>The promotion ladder in <a href="https://github.com/scbrown/yupana/blob/main/docs/work-scoped-governance.md">work-scoped governance</a> gates the move from <code>advise</code> to
 <code>enforce</code> on evidence, not on a date: <em>would this rule have blocked anything that
