@@ -1,0 +1,13 @@
+Script started on 2026-10-12 22:00:06-04:00 [COMMAND="python3 docs/demos/ci-map-validation/reproduce.py 252d1aeb1db0d0ecfffe87a92eccb9b95a6a8f55 fd63fbd" <not executed on terminal>]
+revision 252d1aeb1db0d0ecfffe87a92eccb9b95a6a8f55
+valid matching scope: Checks([CiCheck { id: "ci:source", label: "source check", command: "true", scopes: ["src/**/*.rs"] }])
+unrelated path: Quiet
+malformed scope: Quiet
+truncated projection: Ok([CiCheck { id: "ci:source", label: "source check", command: "true", scopes: ["src/**/*.rs"] }])
+revision fd63fbd350c5ec5baaca8cfe1147a0aa75085d7a
+valid matching scope: Checks([CiCheck { id: "ci:source", label: "source check", command: "true", scopes: ["src/**/*.rs"] }])
+unrelated path: Quiet
+malformed scope: Unknown
+truncated projection: Err(Projection("CI-map results are failed, truncated, or have an invalid coverage marker"))
+
+Script done on 2026-10-12 22:00:11-04:00 [COMMAND_EXIT_CODE="0"]
