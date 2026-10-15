@@ -1833,6 +1833,45 @@ to a merely-configured endpoint, because setting this key deployment-wide is how
 every checkout in its scope came to be one bare command away from a live,
 un-undoable graph write (aegis-o2h97). A promotion must name its target with
 <code>--to</code>. See "<code>yupana promote</code> — what authorizes the write" in the CLI reference.</p>
+<h2 id="docs-history-advisory-yupanadocs_history"><a class="header" href="#docs-history-advisory-yupanadocs_history">Docs-history advisory (<code>[yupana.docs_history]</code>)</a></h2>
+<p>Product docs describe the current product. After an <code>Edit</code>, <code>MultiEdit</code> or
+<code>Write</code> to an in-scope doc, the post-edit hook asks an external judge whether
+the lines the edit <strong>added</strong> describe current state only. When the judge's
+probability is below <code>threshold</code>, the agent is told that the text reads as
+history and is asked to rewrite it as the present-tense fact. For example,
+"X is not supported; use Y" instead of a date or a story of what changed.</p>
+<pre><code class="language-toml">[yupana.docs_history]
+enabled = false            # off unless set, and inert without `command`
+# The judge's argv. Yupana appends `--state &lt;added text&gt; --ask &lt;question&gt;`
+# and reads a JSON `noul` probability from stdout, as
+# {"answers": {"&lt;id&gt;": {"noul": p}}} or {"answer": {"noul": p}}.
+command = ["/path/to/judge", "noul"]
+deadline_ms = 1500         # past this the judge is killed and nothing is said
+threshold = 0.19           # advise when P(current state only) &lt; threshold
+include = ["README.md", "**/README.md", "CLAUDE.md", "**/CLAUDE.md",
+           "AGENTS.md", "**/AGENTS.md", "**/SKILL.md", "docs/reference/**",
+           "docs/services/**", "docs/book/src/reference/**"]
+exclude = ["docs/runbooks/**", "**/runbooks/**"]
+</code></pre>
+<ul>
+<li><strong>Advise only.</strong> It runs after the write and never denies. Every failure
+produces no advisory and leaves the edit alone. Failures include a missing
+command, a spawn error, a non-zero exit, the deadline, and output with no
+<code>noul</code> in 0..=1.</li>
+<li><strong>Post-edit, not pre-edit.</strong> A judge round trip takes hundreds of
+milliseconds, which is past the pre-edit guard's deadline (see
+<a href="reference/policy-guard.html">Pre-Edit Policy Guard</a>).</li>
+<li><strong>What is judged.</strong> Only lines present in the new text and absent from the
+replaced text, with blank lines dropped. Added text over 2000 characters is
+not judged.</li>
+<li><strong>The question is fixed.</strong> <code>threshold</code> is calibrated against it. Change the
+threshold only with new labelled measurements.</li>
+<li><strong>Paths are matched repo-relative.</strong> The repo is the nearest ancestor of the
+edited file that holds <code>.git</code>. <code>exclude</code> wins over <code>include</code>.</li>
+<li><strong>Metrics.</strong> Each judged edit writes one <code>docs_history</code> record with <code>result</code>
+(<code>history</code>, <code>current</code>, or the failure word), <code>score</code> and <code>ms</code>. The record
+includes <code>path</code> only when <code>[yupana.metrics] record_paths</code> allows it.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="mcp-tools"><a class="header" href="#mcp-tools">MCP Tools</a></h1>
 <p>Yupana exposes its capabilities as MCP tools, over stdio and streamable-HTTP.
 Tools use the <code>yupana_*</code> naming convention, alongside Bobbin's <code>bobbin_*</code> and
