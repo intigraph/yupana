@@ -31,11 +31,20 @@ pub fn run_session_start(config_override: Option<&Path>) -> anyhow::Result<()> {
     let mut buf = String::new();
     std::io::stdin().lock().read_to_string(&mut buf).ok();
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let root = HookInput::parse(&buf).map_or_else(|| cwd.clone(), |input| input.root(&cwd));
-    let Ok(config) = YupanaConfig::resolve(config_override, &root) else {
-        return Ok(());
-    };
-    if let Some(brief) = crate::brief::gather(&config, &root) {
+    let input = HookInput::parse(&buf);
+    let parsed = input.is_some();
+    let root = input.map_or_else(|| cwd.clone(), |input| input.root(&cwd));
+    let brief = YupanaConfig::resolve(config_override, &root)
+        .ok()
+        .and_then(|config| crate::brief::gather(&config, &root));
+    // Liveness, read by the hook bundle's evidence probe: a SessionStart hook
+    // that prints nothing is otherwise indistinguishable from one that never
+    // ran, because "no plate" is a silent success (aegis-c6cwdz).
+    crate::metrics::emit(
+        "session_start_invoked",
+        &invocation_fields(&buf, parsed, brief.is_some()),
+    );
+    if let Some(brief) = brief {
         println!(
             "{}",
             serde_json::json!({
@@ -47,4 +56,35 @@ pub fn run_session_start(config_override: Option<&Path>) -> anyhow::Result<()> {
         );
     }
     Ok(())
+}
+
+/// The fields of a `session_start_invoked` record. Pure, so the contract is
+/// testable without the real spool; the same discriminators as
+/// `pre_bash_invoked`, plus whether a briefing was printed.
+#[must_use]
+pub fn invocation_fields(
+    payload: &str,
+    parsed: bool,
+    briefed: bool,
+) -> Vec<(&'static str, serde_json::Value)> {
+    vec![
+        ("parsed", parsed.into()),
+        ("payload_bytes", payload.len().into()),
+        ("briefed", briefed.into()),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::invocation_fields;
+
+    #[test]
+    fn the_record_separates_no_briefing_from_an_unread_payload() {
+        let silent = invocation_fields("{}", true, false);
+        assert_eq!(silent[0], ("parsed", true.into()));
+        assert_eq!(silent[1], ("payload_bytes", 2.into()));
+        assert_eq!(silent[2], ("briefed", false.into()));
+        let garbled = invocation_fields("not json", false, false);
+        assert_eq!(garbled[0], ("parsed", false.into()));
+    }
 }
