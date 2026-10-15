@@ -48,6 +48,8 @@ pub struct YupanaConfig {
     pub policy: crate::policy::PolicyConfig,
     /// What the usage spool records about a guard decision (yupana #77).
     pub metrics: crate::audit::MetricsConfig,
+    /// The post-edit docs-history advisory (advise only; off by default).
+    pub docs_history: crate::docs_history::DocsHistoryConfig,
 }
 
 impl Default for YupanaConfig {
@@ -66,6 +68,7 @@ impl Default for YupanaConfig {
             quipu: QuipuConfig::default(),
             policy: crate::policy::PolicyConfig::default(),
             metrics: crate::audit::MetricsConfig::default(),
+            docs_history: crate::docs_history::DocsHistoryConfig::default(),
         }
     }
 }

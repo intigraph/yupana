@@ -236,3 +236,45 @@ to a merely-configured endpoint, because setting this key deployment-wide is how
 every checkout in its scope came to be one bare command away from a live,
 un-undoable graph write (aegis-o2h97). A promotion must name its target with
 `--to`. See "`yupana promote` — what authorizes the write" in the CLI reference.
+
+## Docs-history advisory (`[yupana.docs_history]`)
+
+Product docs describe the current product. After an `Edit`, `MultiEdit` or
+`Write` to an in-scope doc, the post-edit hook asks an external judge whether
+the lines the edit **added** describe current state only. When the judge's
+probability is below `threshold`, the agent is told that the text reads as
+history and is asked to rewrite it as the present-tense fact. For example,
+"X is not supported; use Y" instead of a date or a story of what changed.
+
+```toml
+[yupana.docs_history]
+enabled = false            # off unless set, and inert without `command`
+# The judge's argv. Yupana appends `--state <added text> --ask <question>`
+# and reads a JSON `noul` probability from stdout, as
+# {"answers": {"<id>": {"noul": p}}} or {"answer": {"noul": p}}.
+command = ["/path/to/judge", "noul"]
+deadline_ms = 1500         # past this the judge is killed and nothing is said
+threshold = 0.19           # advise when P(current state only) < threshold
+include = ["README.md", "**/README.md", "CLAUDE.md", "**/CLAUDE.md",
+           "AGENTS.md", "**/AGENTS.md", "**/SKILL.md", "docs/reference/**",
+           "docs/services/**", "docs/book/src/reference/**"]
+exclude = ["docs/runbooks/**", "**/runbooks/**"]
+```
+
+- **Advise only.** It runs after the write and never denies. Every failure
+  produces no advisory and leaves the edit alone. Failures include a missing
+  command, a spawn error, a non-zero exit, the deadline, and output with no
+  `noul` in 0..=1.
+- **Post-edit, not pre-edit.** A judge round trip takes hundreds of
+  milliseconds, which is past the pre-edit guard's deadline (see
+  [Pre-Edit Policy Guard](policy-guard.md)).
+- **What is judged.** Only lines present in the new text and absent from the
+  replaced text, with blank lines dropped. Added text over 2000 characters is
+  not judged.
+- **The question is fixed.** `threshold` is calibrated against it. Change the
+  threshold only with new labelled measurements.
+- **Paths are matched repo-relative.** The repo is the nearest ancestor of the
+  edited file that holds `.git`. `exclude` wins over `include`.
+- **Metrics.** Each judged edit writes one `docs_history` record with `result`
+  (`history`, `current`, or the failure word), `score` and `ms`. The record
+  includes `path` only when `[yupana.metrics] record_paths` allows it.

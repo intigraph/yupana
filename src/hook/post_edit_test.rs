@@ -295,4 +295,34 @@ mod tests {
         let overlay = reg.overlay("t1").expect("the edit created t1's overlay");
         assert!(overlay.is_touched("a.rs"));
     }
+
+    /// The hook reads `[yupana.docs_history]` from the edited repo's config and
+    /// judges an Edit's added lines. (Off-by-default is a unit test: a user
+    /// config on the machine running this one may enable it.)
+    #[test]
+    fn docs_history_is_wired_through_the_project_config() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        std::fs::create_dir_all(dir.path().join(".bobbin")).unwrap();
+        let file = dir.path().join("README.md");
+        std::fs::write(&file, "# Demo\nX was retired on 2026-09-20.\n").unwrap();
+        let payload = serde_json::json!({
+            "tool_name": "Edit",
+            "cwd": dir.path(),
+            "tool_input": {"file_path": file, "old_string": "# Demo\n",
+                           "new_string": "# Demo\nX was retired on 2026-09-20.\n"},
+        })
+        .to_string();
+        std::fs::write(
+            dir.path().join(".bobbin/config.toml"),
+            "[yupana.docs_history]\nenabled = true\ncommand = [\"sh\", \"-c\", \
+             \"echo '{\\\"answers\\\":{\\\"q\\\":{\\\"noul\\\":0.1}}}'\", \"judge\"]\n",
+        )
+        .unwrap();
+        let text = docs_history(&payload, dir.path()).expect("advisory");
+        assert!(
+            text.contains("docs-history") && text.contains("0.10"),
+            "{text}"
+        );
+    }
 }
