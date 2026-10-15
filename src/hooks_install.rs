@@ -71,6 +71,7 @@ pub fn merge(config: &mut Value, bundle: &Value, harness: Harness) -> usize {
     let hooks = ensure_object(config, "hooks");
     let mut added = 0;
     for (event, matcher, command) in hooks_for(bundle, harness) {
+        let event_name = event.clone();
         let groups = hooks
             .entry(event)
             .or_insert_with(|| json!([]))
@@ -93,11 +94,26 @@ pub fn merge(config: &mut Value, bundle: &Value, harness: Harness) -> usize {
         };
         let list = group["hooks"].as_array_mut().expect("hooks list");
         if !list.iter().any(|h| h["command"] == command.as_str()) {
-            list.push(json!({"type": "command", "command": command}));
+            let mut hook = json!({"type": "command", "command": command});
+            // The parent timeout is half of each entry's budget ladder; an
+            // install without st must not silently drop it (aegis-c6cwdz).
+            if let Some(t) = timeout_of(bundle, &event_name, matcher.as_deref(), &command) {
+                hook["timeout"] = json!(t);
+            }
+            list.push(hook);
             added += 1;
         }
     }
     added
+}
+
+/// The `timeout` the bundle declares for one `(event, matcher, command)` hook.
+fn timeout_of(bundle: &Value, event: &str, matcher: Option<&str>, command: &str) -> Option<u64> {
+    bundle["hooks"].as_array()?.iter().find_map(|h| {
+        (h["event"] == event && h["matcher"].as_str() == matcher && h["command"] == command)
+            .then(|| h["timeout"].as_u64())
+            .flatten()
+    })
 }
 
 /// Remove every bundle hook for `harness` (matched by exact command), dropping
