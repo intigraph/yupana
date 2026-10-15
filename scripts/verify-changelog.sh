@@ -46,7 +46,7 @@ else
 fi
 
 # Newest version section = from the first `## [x]` heading to the next one.
-newest_ver="$(printf '%s\n' "$changelog_content" | grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+newest_ver="$(grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' <<<"$changelog_content" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
 [[ -n "$newest_ver" ]] || { echo "ERROR: no versioned section found in CHANGELOG.md" >&2; exit 2; }
 # VERSIONED headings only. `/^## \[/` also matches `## [Unreleased]`, so on a
 # changelog that carries one — yupana's does — n==1 selects that empty block and the
