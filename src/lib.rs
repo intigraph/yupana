@@ -47,6 +47,8 @@ pub mod constraint;
 pub mod daemon;
 pub mod dataflow;
 pub mod docref;
+/// Post-edit advisory: product docs describe the current product, not history.
+pub mod docs_history;
 pub mod errors;
 pub mod exemplar;
 pub mod export;

@@ -69,6 +69,9 @@ pub fn run_post_edit(tenant: Option<&str>) -> anyhow::Result<()> {
     // that is not a Rust file with symbols, and this boundary is
     // language-independent — the specimen case in the bead was edits across
     // several repos and file types, none of which advisory_for would have seen.
+    if let Some(text) = docs_history(&buf, &root) {
+        sections.push(text);
+    }
     let trajectory = super::delegate_line::advisory(&buf);
     if let Some(text) = advisory_for(&buf, &root, tenant) {
         sections.push(text);
@@ -92,6 +95,44 @@ pub fn run_post_edit(tenant: Option<&str>) -> anyhow::Result<()> {
     }
     // A hook must never fail the harness: absence of output = nothing to say.
     Ok(())
+}
+
+/// The docs-history advisory for an edit-shaped payload. Language-independent,
+/// and config-gated: an unreadable config is silence, never an error here.
+fn docs_history(input_json: &str, default_root: &Path) -> Option<String> {
+    let input = HookInput::parse(input_json)?;
+    let file = PathBuf::from(input.tool_input.file_path.as_deref()?);
+    let (old, new) = match input.tool_name.as_deref() {
+        Some("Write") => (String::new(), input.tool_input.content.clone()?),
+        Some("Edit" | "MultiEdit") => {
+            let t = &input.tool_input;
+            let join = |first: &Option<String>, rest: Vec<&Option<String>>| {
+                let all = std::iter::once(first).chain(rest).flatten();
+                all.cloned().collect::<Vec<_>>().join("\n")
+            };
+            (
+                join(
+                    &t.old_string,
+                    t.edits.iter().map(|e| &e.old_string).collect(),
+                ),
+                join(
+                    &t.new_string,
+                    t.edits.iter().map(|e| &e.new_string).collect(),
+                ),
+            )
+        }
+        _ => return None,
+    };
+    let root = input.root(default_root);
+    let config = crate::config::YupanaConfig::load(&root).ok()?;
+    crate::docs_history::advisory(
+        &config.docs_history,
+        config.metrics.record_paths,
+        &file,
+        &root,
+        &old,
+        &new,
+    )
 }
 
 /// Compute the advisory text for a hook payload, or `None` when there is nothing
