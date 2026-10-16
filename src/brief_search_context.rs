@@ -87,6 +87,12 @@ mod tests {
             });
             assert!(rendered.contains(expected));
             assert!(!rendered.contains("urn:wrong"));
+            println!(
+                "outcome={}; contributed_items={}; diagnostic_present={}",
+                outcome.unwrap_or("UNKNOWN"),
+                items.len(),
+                rendered.contains("urn:wrong")
+            );
             if expected == "UNKNOWN" {
                 assert!(!rendered.contains("NO CONTEXT"));
             }
