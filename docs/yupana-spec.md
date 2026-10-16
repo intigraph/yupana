@@ -1429,7 +1429,7 @@ than degrading to the qualifier.)
 ## Appendix D: Implementation Status
 
 A snapshot of what is actually built, reconciled against the source tree
-2026-10-03. The body of this spec (§§1–11) is the *design*; this appendix is
+2026-10-16. The body of this spec (§§1–11) is the *design*; this appendix is
 the *state*. Source files, lines and test attributes are recomputed from the
 current tree, never carried forward from the previous revision.
 
@@ -1456,9 +1456,9 @@ drops landed outside the phase numbering entirely — the game-state harness
 (FR-35..FR-39) and the golden-path guard (FR-40..FR-42) — each behind its own
 Cargo feature and its own addendum.
 
-**Source layout (`src/`, 253 `.rs` files, ~64,373 lines):** the 400-line soft
-cap is a warn-not-fail target and 35 non-test files currently exceed it, led by
-`export.rs` (605), `hook/rule_planes.rs` (561) and `promote.rs` (526). Those
+**Source layout (`src/`, 285 `.rs` files, ~70,191 lines):** the 400-line soft
+cap is a warn-not-fail target and 36 non-test files currently exceed it, led by
+`export.rs` (605), `hook/rule_planes.rs` (561) and `promote.rs` (511). Those
 three are the only entries in `scripts/file-size-baseline.txt`: the ratchet
 freezes their recorded upper bounds — they may shrink but never grow
 — while any file not listed must stay under the hard limit outright. Tests are
@@ -1482,6 +1482,7 @@ exempt from the check (`*_test.rs`, `*tests.rs`, `tests/`).
 | `trace.rs` / `attribution.rs` / `constraint.rs` / `action.rs` / `plate.rs` | the Σ-derived trace record: `ConstraintEvaluation`, the SARC §9.6 attribution tuple, action resolution | done |
 | `verdict.rs` / `verdict_spool.rs` / `audit.rs` | signed verdicts, local spool, deferred promotion (`yupana verdicts`) | done (`quipu` feature) |
 | `action_certification.rs` | signed, replay-compatible agent push/land certification records | done (`quipu` feature) |
+| `landing_admission.rs` / `project_admission.rs` / `hook/admission_guard.rs` | exact-target signed admission predicate, governed projection/cache and pre-bash advice/block response | source and isolated hook cases; producer integration and deployment acceptance pending (`quipu` feature) |
 | `brief*.rs` / `grounding*.rs` / `turn_grounding.rs` / `recurrence.rs` / `exemplar.rs` | the work-item briefing (CONTEXT consumer) and turn-grounding evidence | done (`quipu` feature) |
 | `tripwire.rs` / `project_tripwire.rs` | governed path-boundary tripwires projected from quipu | done (`quipu` feature) |
 | `state/` | game-state ingestion, `graph-pattern` policy plane, order guard, what-if, per-(game, faction) tenancy (FR-35..FR-39) | done (`game-state` feature) |
@@ -1526,8 +1527,8 @@ hand-built without the flag.
 `cpg` and `lsp` now gate real engines, with tier advertisement and independent
 CI arms. The former empty flags were removed before these implementations landed.
 
-**Tests: 1,222** source test attributes across `src/` and `tests/`, measured
-2026-09-07 by counting `#[test]` and `#[tokio::test]`. This is a source count;
+**Tests: 1,328** source test attributes across `src/` and `tests/`, measured
+2026-10-16 by counting `#[test]` and `#[tokio::test]`. This is a source count;
 compiled counts vary with Cargo features and macro expansion. Appendix D's drift
 guard checks these measurements within its documented tolerance. Python replay,
 session-guard, and session-depth suites run through `just test`; the replay suite

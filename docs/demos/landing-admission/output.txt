@@ -1,0 +1,5 @@
+Script started on 2026-10-16 09:56:54-04:00 [COMMAND="bash -o pipefail -c "just test --features quipu --test landing_admission controlled_block_refuses_raw_and_admits_current_helper_evidence -- --nocapture 2>/dev/null | rg \"^DEMO \""" <not executed on terminal>]
+DEMO {"case":"raw merge without admission","denied":true,"hook_response":{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"landing admission Missing for github.com/example/project; policy https://example.org/policy/admission: canonical admission required"}}}
+DEMO {"case":"same PR with current signed admission","denied":false,"hook_response":null}
+
+Script done on 2026-10-16 09:57:02-04:00 [COMMAND_EXIT_CODE="0"]
