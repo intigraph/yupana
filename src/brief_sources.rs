@@ -310,6 +310,7 @@ fn probes(query_text: &str, with_terms: bool) -> Vec<String> {
 /// design. A hit SUPPORTS (2 votes) when it scores within
 /// [`SEMANTIC_BAND`] of the query's top non-self hit and that top clears
 /// [`SEMANTIC_MIN_TOP`] (below it, "nearest" is just the least-far noise).
+/// These votes apply only to context already admitted by the server contract.
 /// There is deliberately NO veto: mid-band true and false positives measure
 /// indistinguishably on this surface (0.35 vs 0.38), so a low semantic
 /// score is not evidence against a lexically-corroborated candidate.
@@ -331,9 +332,10 @@ fn item_iri(endpoint: &str, item: &str) -> Option<String> {
 }
 
 /// SEMANTIC neighbors of the query text, via quipu `/search` — the endpoint
-/// embeds the query server-side when the store has an embedding provider,
-/// and errors when it does not, which lands here as an empty list: the
-/// semantic source simply contributes no votes on a lexical-only store.
+/// embeds the query server-side when the store has an embedding provider.
+/// Only server-admitted context contributes votes. Missing provider, transport
+/// failure or an unsupported contract returns UNKNOWN, not a successful empty
+/// search and not permission to fall back to lexical neighbours.
 fn semantic_hits(endpoint: &str, query_text: &str) -> Result<Vec<(String, f64)>, &'static str> {
     if ablated("semantic") {
         return Ok(Vec::new());
