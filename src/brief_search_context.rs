@@ -13,7 +13,10 @@ pub(super) fn admitted(response: &Value) -> Result<Vec<(String, f64)>, &'static 
     if response["insufficient_context"].as_bool() == Some(true)
         && context["outcome"].as_str() == Some("NO CONTEXT")
     {
-        return Err("NO CONTEXT");
+        return match response["context_results"].as_array() {
+            Some(rows) if rows.is_empty() => Err("NO CONTEXT"),
+            _ => Err("UNKNOWN"),
+        };
     }
     if response["insufficient_context"].as_bool() != Some(false)
         || context["outcome"].as_str() != Some("CONTEXT")
@@ -46,6 +49,22 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn negative_outcome_requires_explicit_empty_context_rows() {
+        for rows in [
+            json!([{"entity":"urn:wrong","similarity":0.8}]),
+            Value::Null,
+            json!({}),
+        ] {
+            let body = json!({"insufficient_context":true,"context_results":rows,
+                "context":{"contract":"quipu-context/v1","outcome":"NO CONTEXT","similarity_floor":0.52}});
+            assert_eq!(admitted(&body), Err("UNKNOWN"));
+        }
+        let missing = json!({"insufficient_context":true,
+            "context":{"contract":"quipu-context/v1","outcome":"NO CONTEXT","similarity_floor":0.52}});
+        assert_eq!(admitted(&missing), Err("UNKNOWN"));
+    }
+
+    #[test]
     fn unsupported_floor_never_certifies_no_context() {
         for floor in [json!(0.2), Value::Null, json!(true), json!(1.1)] {
             let body = json!({"insufficient_context":true,"context_results":[],
@@ -61,6 +80,12 @@ mod tests {
                 json!({"results":[{"entity":"urn:wrong","score":0.99}],"insufficient_context":true,
                 "context":{"contract":"quipu-context/v1","outcome":"NO CONTEXT","similarity_floor":0.52},"context_results":[]}),
                 "NO CONTEXT",
+            ),
+            (
+                json!({"results":[{"entity":"urn:wrong","score":0.99}],"insufficient_context":true,
+                "context":{"contract":"quipu-context/v1","outcome":"NO CONTEXT","similarity_floor":0.52},
+                "context_results":[{"entity":"urn:wrong","similarity":0.8}]}),
+                "UNKNOWN",
             ),
             (
                 json!({"results":[{"entity":"urn:wrong","score":0.99}]}),
