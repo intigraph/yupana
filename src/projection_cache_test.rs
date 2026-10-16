@@ -84,6 +84,20 @@ fn a_cache_carrying_an_empty_landing_catalogue_stays_a_real_answer() {
     assert_eq!(restored.landing_policies, Some(Vec::new()));
 }
 
+#[test]
+fn admission_catalogue_missing_and_observed_empty_remain_distinct() {
+    let mut value = serde_json::to_value(a_projection("http://q", 10)).unwrap();
+    value.as_object_mut().unwrap().remove("admission_policies");
+    let unknown: CachedProjection = serde_json::from_value(value.clone()).unwrap();
+    assert!(unknown.admission_policies.is_none());
+    value["admission_policies"] = serde_json::json!([]);
+    let empty: CachedProjection = serde_json::from_value(value).unwrap();
+    assert!(empty
+        .admission_policies
+        .is_some_and(|policies| policies.is_empty()));
+    assert_eq!(empty.policies.len(), 1);
+}
+
 fn a_projection(endpoint: &str, written_at: u64) -> CachedProjection {
     CachedProjection {
         version: CACHE_VERSION,
@@ -94,6 +108,7 @@ fn a_projection(endpoint: &str, written_at: u64) -> CachedProjection {
         tripwires: Vec::new(),
         memory_policies: Vec::new(),
         trajectory_policies: None,
+        admission_policies: None,
         landing_policies: None,
         grounded_rules: Vec::new(),
         grounding: None,

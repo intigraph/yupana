@@ -9,6 +9,9 @@
 //! (`project::TEXT_POLICY_QUERY`) still resolves: this is a move, not an API
 //! change.
 
+/// Immutable ontology identity shared by projection channels.
+pub const ONTOLOGY_NAMESPACE: &str = "http://aegis.gastown.local/ontology/";
+
 /// The SPARQL SELECT that pulls every `boundary:"action"`, `tree-sitter`-tier
 /// structural policy out of quipu, joined to its Selector and Predicate atoms.
 ///
