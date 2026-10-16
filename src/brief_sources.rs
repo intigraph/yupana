@@ -17,6 +17,8 @@ use crate::config::YupanaConfig;
 
 #[path = "brief_identity.rs"]
 mod identity;
+#[path = "brief_search_context.rs"]
+mod search_context;
 
 /// Only ids shaped like tracker ids ride into SPARQL literals. The dot is part
 /// of that shape: a child item is `aegis-4hhqoe.3`, and dropping it asked for
@@ -141,6 +143,7 @@ pub(crate) fn similar_items(
     query_text: &str,
     scopes: Option<&crate::policy::WorkItemScopes>,
     related: &[String],
+    context_outcome: &mut Option<&'static str>,
 ) -> Vec<SimilarItem> {
     // One probe per angle, then CORROBORATION: the full label (exact-phrasing
     // hits, and the semantic path when the store has embeddings/FTS) plus the
@@ -160,7 +163,18 @@ pub(crate) fn similar_items(
     // matcher, and on a semantic store they retire — measured by the F1
     // ablations, the collisions they admit there cost more than the recall
     // they add (the same mid-band inseparability that rules out a veto).
-    let hits = semantic_hits(endpoint, query_text);
+    let hits = match semantic_hits(endpoint, query_text) {
+        Ok(hits) => hits,
+        Err(outcome) => {
+            *context_outcome = Some(outcome);
+            return Vec::new();
+        }
+    };
+    *context_outcome = Some(if ablated("semantic") {
+        "NOT SEARCHED"
+    } else {
+        "CONTEXT"
+    });
     let mut entities: Vec<serde_json::Value> = Vec::new();
     let mut order: Vec<String> = Vec::new();
     let mut votes: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
@@ -175,6 +189,9 @@ pub(crate) fn similar_items(
         let weight = if index == 0 { 2 } else { 1 };
         for entity in response["entities"].as_array().cloned().unwrap_or_default() {
             let iri = entity["iri"].as_str().unwrap_or_default().to_string();
+            if !ablated("semantic") && !hits.iter().any(|(allowed, _)| *allowed == iri) {
+                continue;
+            }
             *votes.entry(iri.clone()).or_insert(0) += weight;
             if !order.contains(&iri) {
                 order.push(iri);
@@ -293,6 +310,7 @@ fn probes(query_text: &str, with_terms: bool) -> Vec<String> {
 /// design. A hit SUPPORTS (2 votes) when it scores within
 /// [`SEMANTIC_BAND`] of the query's top non-self hit and that top clears
 /// [`SEMANTIC_MIN_TOP`] (below it, "nearest" is just the least-far noise).
+/// These votes apply only to context already admitted by the server contract.
 /// There is deliberately NO veto: mid-band true and false positives measure
 /// indistinguishably on this surface (0.35 vs 0.38), so a low semantic
 /// score is not evidence against a lexically-corroborated candidate.
@@ -314,32 +332,21 @@ fn item_iri(endpoint: &str, item: &str) -> Option<String> {
 }
 
 /// SEMANTIC neighbors of the query text, via quipu `/search` — the endpoint
-/// embeds the query server-side when the store has an embedding provider,
-/// and errors when it does not, which lands here as an empty list: the
-/// semantic source simply contributes no votes on a lexical-only store.
-fn semantic_hits(endpoint: &str, query_text: &str) -> Vec<(String, f64)> {
+/// embeds the query server-side when the store has an embedding provider.
+/// Only server-admitted context contributes votes. Missing provider, transport
+/// failure or an unsupported contract returns UNKNOWN, not a successful empty
+/// search and not permission to fall back to lexical neighbours.
+fn semantic_hits(endpoint: &str, query_text: &str) -> Result<Vec<(String, f64)>, &'static str> {
     if ablated("semantic") {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let Some(response) = crate::brief_http::post(
+    let response = crate::brief_http::post(
         endpoint,
         "/search",
         &serde_json::json!({ "query": query_text, "limit": 10 }),
-    ) else {
-        return Vec::new();
-    };
-    response["results"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .filter_map(|r| {
-            Some((
-                r["entity"].as_str()?.to_string(),
-                r["score"].as_f64().unwrap_or(0.0),
-            ))
-        })
-        .collect()
+    )
+    .ok_or("UNKNOWN")?;
+    search_context::admitted(&response)
 }
 
 /// CENTRAL entities around the item's ground: quipu's personalized pagerank
@@ -454,16 +461,19 @@ pub fn gather(config: &YupanaConfig, root: &Path) -> Option<Brief> {
     let central = central_entities(&endpoint, &item);
     // `/context` LAST (aegis-drywac): it is the slowest source (~12s measured),
     // so under a spent budget it is the one skipped, not the cheap ones after it.
+    let mut context_outcome = None;
     let similar = similar_items(
         &endpoint,
         &item,
         &query_text,
         registry.work_item_scopes(),
         &related,
+        &mut context_outcome,
     );
     Some(Brief {
         ground: ground_of(root, &paths),
         similar,
+        context_outcome,
         related,
         central,
         rules: crate::brief::rules_in_force(&registry),

@@ -1,0 +1,14 @@
+Script started on 2026-10-16 12:48:59-04:00 [COMMAND="stty -onlcr && bash run.sh" <not executed on terminal>]
+Candidate source: 465df7fda90da7cb79b5f0179b0a26f641113c11
+
+running 3 tests
+test brief_sources::search_context::tests::unsupported_floor_never_certifies_no_context ... ok
+test brief_sources::search_context::tests::admitted_positive_uses_raw_cosine_and_keeps_only_context_rows ... ok
+outcome=NO CONTEXT; contributed_items=0; diagnostic_present=false
+outcome=UNKNOWN; contributed_items=0; diagnostic_present=false
+test brief_sources::search_context::tests::actual_source_no_context_never_falls_back_to_lexical_neighbors ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 990 filtered out; finished in 0.01s
+
+
+Script done on 2026-10-16 12:49:00-04:00 [COMMAND_EXIT_CODE="0"]

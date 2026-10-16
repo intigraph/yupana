@@ -94,13 +94,13 @@ fn bounded_batches_do_not_retry_failed_candidates_individually() {
 }
 
 #[test]
-fn real_similarity_pipeline_batches_candidates_without_changing_the_brief() {
+fn real_similarity_pipeline_batches_only_admitted_context_candidates() {
     let (endpoint, server) = stub(6, |index, request| {
         (
             200,
             match index {
                 0 => {
-                    json!({"results":[{"entity":"urn:self","score":1.0},{"entity":"urn:semantic","score":0.9}]})
+                    json!({"results":[],"insufficient_context":false,"context":{"contract":"quipu-context/v1","outcome":"CONTEXT","similarity_floor":0.52},"context_results":[{"entity":"urn:self","similarity":1.0},{"entity":"urn:semantic","similarity":0.9}]})
                 }
                 1 => json!({"entities":[
                     {"iri":"urn:context","types":["WorkItem"],"label":"Context label","score":0.8},
@@ -116,16 +116,16 @@ fn real_similarity_pipeline_batches_candidates_without_changing_the_brief() {
             },
         )
     });
-    let similar = super::super::similar_items(&endpoint, "current-1", "some label", None, &[]);
-    assert_eq!(similar.len(), 2);
+    let similar =
+        super::super::similar_items(&endpoint, "current-1", "some label", None, &[], &mut None);
+    assert_eq!(similar.len(), 1);
     assert_eq!(similar[0].id, "semantic-3");
     assert_eq!(similar[0].label.as_deref(), Some("Semantic label"));
     assert_eq!(similar[0].outcome.as_deref(), Some("done"));
-    assert_eq!(similar[1].id, "context-2");
-    assert_eq!(similar[1].label.as_deref(), Some("Context label"));
     let requests = server.join().unwrap();
     let query = requests[3]["query"].as_str().unwrap();
-    assert!(query.contains("<urn:semantic>") && query.contains("<urn:context>"));
+    assert!(query.contains("<urn:semantic>"));
+    assert!(!query.contains("<urn:context>"));
     assert!(!query.contains("<urn:nonitem>"));
 }
 
