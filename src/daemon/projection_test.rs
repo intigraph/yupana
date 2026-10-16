@@ -33,7 +33,6 @@ fn seed(path: &std::path::Path, endpoint: &str, written_at: u64) {
             // trajectory channel, and None is what distinguishes that from a
             // catalogue that was queried and came back empty.
             trajectory_policies: None,
-            admission_policies: None,
         },
     );
 }

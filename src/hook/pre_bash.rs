@@ -107,7 +107,7 @@ pub fn run_pre_bash() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(super) fn combine_advisories(
+fn combine_advisories(
     first: super::pre_edit::Outcome,
     second: super::pre_edit::Outcome,
 ) -> super::pre_edit::Outcome {

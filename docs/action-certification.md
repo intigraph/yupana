@@ -40,10 +40,3 @@ Example:
 yupana certify --key-path yupana-signing.pk8 \
   --spool action-certifications.jsonl < action.json
 ```
-
-Library consumers can authenticate an envelope with
-`action_certification::verify(record, issuer_public_key)`. The public key must
-come from an independently trusted registration. Verification checks the
-signature and derived decision fields; it does not establish the truth of
-the signer's observations. Exact-target admission has additional requirements
-described in [the admission contract](design/landing-admission.md).

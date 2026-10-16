@@ -75,8 +75,6 @@ pub mod keywords;
 /// The action selector for LANDINGS — `git push` / `gh pr merge` — which the
 /// governed single-writer policy is written against.
 pub mod landing;
-#[cfg(feature = "quipu")]
-pub mod landing_admission;
 #[cfg(feature = "mcp")]
 pub mod mcp;
 pub mod metrics;
@@ -87,8 +85,6 @@ pub mod policy_items;
 /// Phase-4 projection: a hot, one-directional cache of quipu's structural policies.
 #[cfg(feature = "quipu")]
 pub mod project;
-#[cfg(feature = "quipu")]
-pub mod project_admission;
 /// The SPARQL `project` sends. Gated with it: queries for a plane this build
 /// does not have are dead weight, and an ungated half of a gated feature is how
 /// a `--features` matrix starts lying about what a binary can do.

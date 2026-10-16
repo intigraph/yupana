@@ -90,9 +90,6 @@ pub struct CachedProjection {
     /// None distinguishes pre-channel caches from a queried empty catalogue.
     #[serde(default)]
     pub trajectory_policies: Option<Vec<crate::project_trajectory::TrajectoryPolicy>>,
-    /// Unknown in pre-admission caches; an observed empty catalogue is Some(empty).
-    #[serde(default)]
-    pub admission_policies: Option<Vec<crate::project_admission::ProjectedAdmission>>,
     /// Last-known entity-grounded rules (bobbin-tvn). Defaulted so a cache
     /// written before grounding existed still loads.
     #[serde(default)]
@@ -306,13 +303,6 @@ pub fn load_servable(
     let body = std::fs::read(path).map_err(|e| CacheMiss::Unreadable(e.to_string()))?;
     let cached: CachedProjection =
         serde_json::from_slice(&body).map_err(|e| CacheMiss::Unreadable(e.to_string()))?;
-    if let Some(policies) = &cached.admission_policies {
-        for policy in policies {
-            policy
-                .validate()
-                .map_err(|e| CacheMiss::Unreadable(e.to_string()))?;
-        }
-    }
     if let Some(policies) = &cached.trajectory_policies {
         for policy in policies {
             policy
