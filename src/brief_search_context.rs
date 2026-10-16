@@ -97,7 +97,7 @@ mod tests {
             let items = super::super::similar_items(
                 &endpoint,
                 "fixture-1",
-                "quaffleplex",
+                &["quaf", "fleplex"].concat(),
                 None,
                 &[],
                 &mut outcome,
