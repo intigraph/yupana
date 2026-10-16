@@ -153,6 +153,7 @@ mod tests {
                       advisory naming this item."
                 .into(),
             cache_age: None,
+            context_outcome: None,
         }
     }
 

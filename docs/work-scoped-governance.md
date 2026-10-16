@@ -260,3 +260,29 @@ Widening it to a supertype — with the existing type as a subclass, so every cu
 keeps projecting — is a code change plus a shapes update, not a data write. The projection
 module already carries a comment recording the last time this exact seam shipped on both
 sides and returned zero rows.
+
+## Semantic context admission
+
+The session briefing consumes Quipu's `quipu-context/v1` decision. Ranked
+`results` remain diagnostics. Only `context_results` with a positive admission
+and finite raw cosine at or above the declared floor (at least 0.52) can support
+similar work. BM25, graph and fusion scores cannot replace cosine. The server
+also checks exact subject/identifier and query-term coverage; the provisional
+floor alone does not establish that an answer exists.
+
+Consumer validation requires a finite declared floor in `[0.52, 1]` before
+accepting either CONTEXT or NO CONTEXT. A lower, missing or malformed floor
+is UNKNOWN in these consumers, even when the server reports no context.
+
+An explicit insufficient-context response renders **NO CONTEXT**. A missing or
+unsupported contract, transport failure, malformed response or contradictory
+admission renders **UNKNOWN**. Neither state falls back to lexical neighbors.
+When context is admitted, later context enrichment is restricted to those
+admitted identities; it cannot reintroduce a rejected candidate. Direct
+provenance and graph-ground sections remain separate evidence sources.
+
+Deploy the server contract before this consumer. Existing retrieval evaluation
+numbers predate this admission policy and do not establish its precision or
+recall. No new evaluation, model download, live probe or installation follows
+from the source change. The explicit research ablation remains marked NOT
+SEARCHED; it is not an operational acceptance result.

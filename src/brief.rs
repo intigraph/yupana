@@ -45,6 +45,8 @@ pub struct Brief {
     /// Semantically similar work items, with outcome and ground — successful
     /// ones are the reuse signal.
     pub similar: Vec<SimilarItem>,
+    /// Versioned semantic context admission; missing requests remain UNKNOWN.
+    pub context_outcome: Option<&'static str>,
     /// The central entities around the item's ground (personalized pagerank),
     /// as `(iri-or-label, score)`.
     pub central: Vec<(String, f64)>,
@@ -144,6 +146,9 @@ pub fn posture_line(config: &YupanaConfig) -> String {
 pub fn render(brief: &Brief) -> String {
     let mut out = String::new();
     let title = brief.label.as_deref().unwrap_or("(no label in the graph)");
+    if let Some(outcome) = brief.context_outcome {
+        out.push_str(&format!("Semantic context: {outcome}\n\n"));
+    }
     out.push_str(&format!(
         "## Work-item briefing (yupana)\n\nTracked work item: `{}` — {title}\n",
         brief.item
