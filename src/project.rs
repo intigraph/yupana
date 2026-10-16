@@ -65,6 +65,14 @@ pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
         .set("X-Quipu-Client", crate::quipu_label::current())
         .send_string(&body)
         .map_err(|e| Error::Projection(format!("POST {url} failed: {e}")))?;
+    if resp
+        .header("X-Quipu-Truncated")
+        .is_some_and(|value| !value.trim().eq_ignore_ascii_case("false"))
+    {
+        return Err(Error::Projection(
+            "truncated or invalid /query response".into(),
+        ));
+    }
     resp.into_string()
         .map_err(|e| Error::Projection(format!("could not read /query response: {e}")))
 }

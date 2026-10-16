@@ -65,15 +65,36 @@ fn properties_response(fields: &[(&str, String)]) -> String {
     )
 }
 
-fn server(replies: Vec<String>) -> (String, std::thread::JoinHandle<()>) {
+struct Server {
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    thread: std::thread::JoinHandle<()>,
+}
+
+impl Server {
+    fn join(self) -> std::thread::Result<()> {
+        self.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.thread.join()
+    }
+}
+
+fn server(replies: Vec<String>) -> (String, Server) {
+    server_with_headers(replies.into_iter().map(|body| (body, None)).collect())
+}
+
+fn server_with_headers(replies: Vec<(String, Option<&'static str>)>) -> (String, Server) {
     use std::io::{Read, Write};
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let stopped = stop.clone();
     let thread = std::thread::spawn(move || {
-        for reply in replies {
+        for (reply, header) in replies {
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
             let mut stream = loop {
+                if stopped.load(std::sync::atomic::Ordering::Relaxed) {
+                    return;
+                }
                 match listener.accept() {
                     Ok((stream, _)) => break stream,
                     Err(error)
@@ -112,24 +133,26 @@ fn server(replies: Vec<String>) -> (String, std::thread::JoinHandle<()>) {
                     }
                 }
             }
+            let header = header.map_or_else(String::new, |value| {
+                format!("X-Quipu-Truncated: {value}\r\n")
+            });
             write!(
                 stream,
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                "HTTP/1.1 200 OK\r\nContent-Type: application/sparql-results+json\r\n{header}Content-Length: {}\r\nConnection: close\r\n\r\n{}",
                 reply.len(),
                 reply
             )
             .unwrap();
         }
     });
-    (endpoint, thread)
+    (endpoint, Server { stop, thread })
 }
 
-#[test]
-fn indexed_fetch_preserves_typed_policy_selector_and_predicate() {
+fn valid_policy_replies() -> Vec<String> {
     let rule = fixture();
     let rdf_type = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
     let p = |name| format!("{NS}{name}");
-    let replies = vec![
+    vec![
         results(vec![serde_json::json!({"policy":{"value":rule.id}})]),
         properties_response(&[
             (rdf_type, p("Policy")),
@@ -158,7 +181,12 @@ fn indexed_fetch_preserves_typed_policy_selector_and_predicate() {
             ),
             (&p("matchType"), rule.match_type),
         ]),
-    ];
+    ]
+}
+
+#[test]
+fn indexed_fetch_preserves_typed_policy_selector_and_predicate() {
+    let replies = valid_policy_replies();
     let (endpoint, thread) = server(replies);
     let rules = fetch_admission_policies(&endpoint).unwrap();
     thread.join().unwrap();
@@ -201,4 +229,72 @@ fn truncated_replies_never_become_an_observed_catalogue() {
         .to_string()
         .contains("truncated"));
     thread.join().unwrap();
+}
+
+fn rejects_http_header_at(index: usize) {
+    let replies = valid_policy_replies()
+        .into_iter()
+        .enumerate()
+        .map(|(i, body)| (body, (i == index).then_some("true")))
+        .collect();
+    let (endpoint, server) = server_with_headers(replies);
+    let result = fetch_admission_policies(&endpoint);
+    server.join().unwrap();
+    assert!(
+        result.is_err(),
+        "accepted partial response at query {index}"
+    );
+}
+
+#[test]
+fn http_header_truncated_nonempty_discovery_is_refused() {
+    rejects_http_header_at(0);
+}
+#[test]
+fn http_header_truncated_policy_member_is_refused() {
+    rejects_http_header_at(1);
+}
+#[test]
+fn http_header_truncated_selector_member_is_refused() {
+    rejects_http_header_at(2);
+}
+#[test]
+fn http_header_truncated_predicate_member_is_refused() {
+    rejects_http_header_at(3);
+}
+
+#[test]
+fn http_header_truncated_empty_discovery_is_not_known_empty() {
+    let (endpoint, server) = server_with_headers(vec![(results(vec![]), Some("true"))]);
+    let result = fetch_admission_policies(&endpoint);
+    server.join().unwrap();
+    assert!(result.is_err());
+}
+
+#[test]
+fn http_header_false_allows_complete_nonempty_catalogue() {
+    let replies = valid_policy_replies()
+        .into_iter()
+        .map(|body| (body, Some("false")))
+        .collect();
+    let (endpoint, server) = server_with_headers(replies);
+    let result = fetch_admission_policies(&endpoint);
+    server.join().unwrap();
+    assert_eq!(result.unwrap().len(), 1);
+}
+
+#[test]
+fn http_header_false_allows_observed_empty_catalogue() {
+    let (endpoint, server) = server_with_headers(vec![(results(vec![]), Some("false"))]);
+    let result = fetch_admission_policies(&endpoint);
+    server.join().unwrap();
+    assert!(result.unwrap().is_empty());
+}
+
+#[test]
+fn http_header_invalid_completeness_is_not_known_empty() {
+    let (endpoint, server) = server_with_headers(vec![(results(vec![]), Some("unknown"))]);
+    let result = fetch_admission_policies(&endpoint);
+    server.join().unwrap();
+    assert!(result.is_err());
 }
