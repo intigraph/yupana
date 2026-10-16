@@ -183,3 +183,22 @@ fn observed_empty_and_incomplete_member_have_different_results() {
         .contains("typed Policy"));
     thread.join().unwrap();
 }
+
+#[test]
+fn truncated_replies_never_become_an_observed_catalogue() {
+    let truncated = serde_json::json!({"truncated":true,"results":{"bindings":[]}}).to_string();
+    let (endpoint, thread) = server(vec![truncated.clone()]);
+    assert!(fetch_admission_policies(&endpoint).is_err());
+    thread.join().unwrap();
+    let (endpoint, thread) = server(vec![
+        results(vec![
+            serde_json::json!({"policy":{"value":"https://example.org/policy"}}),
+        ]),
+        truncated,
+    ]);
+    assert!(fetch_admission_policies(&endpoint)
+        .unwrap_err()
+        .to_string()
+        .contains("truncated"));
+    thread.join().unwrap();
+}

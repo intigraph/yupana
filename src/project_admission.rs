@@ -108,6 +108,14 @@ fn error(message: impl std::fmt::Display) -> Error {
     Error::Projection(format!("landing-admission catalogue: {message}"))
 }
 
+fn complete_reply(body: &str) -> Result<serde_json::Value> {
+    let value: serde_json::Value = serde_json::from_str(body).map_err(error)?;
+    if value.get("truncated").and_then(serde_json::Value::as_bool) == Some(true) {
+        return Err(error("truncated result; refusing a partial catalogue"));
+    }
+    Ok(value)
+}
+
 fn properties(endpoint: &str, iri: &str) -> Result<Properties> {
     if !iri.contains(':')
         || iri
@@ -120,7 +128,7 @@ fn properties(endpoint: &str, iri: &str) -> Result<Properties> {
         endpoint,
         &format!("SELECT ?property ?value WHERE {{ <{iri}> ?property ?value }}"),
     )?;
-    let value = serde_json::from_str(&body).map_err(error)?;
+    let value = complete_reply(&body)?;
     let mut out: Properties = BTreeMap::new();
     for row in crate::project_decode::rows_of(&value)? {
         let key = crate::project_decode::binding_value(row, "property")
@@ -158,7 +166,7 @@ fn typed(properties: &Properties, class: &str) -> Result<()> {
 pub fn fetch_admission_policies(endpoint: &str) -> Result<Vec<ProjectedAdmission>> {
     let query = format!("PREFIX aegis: <{NS}> SELECT ?policy WHERE {{ ?policy aegis:targets \"landing-admission\" }}");
     let body = crate::project::query(endpoint, &query)?;
-    let value = serde_json::from_str(&body).map_err(error)?;
+    let value = complete_reply(&body)?;
     let mut out = Vec::new();
     for row in crate::project_decode::rows_of(&value)? {
         let id = crate::project_decode::binding_value(row, "policy")
