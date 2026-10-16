@@ -21,6 +21,8 @@
 //! Claude Code's fail-*closed* channel. Reserving exit `2` means even a panic
 //! (exit 101, a non-blocking error to the harness) lets the edit through.
 
+#[cfg(feature = "quipu")]
+mod admission_guard;
 mod codex_patch;
 #[cfg(feature = "quipu")]
 mod config_drift;

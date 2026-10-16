@@ -65,6 +65,14 @@ pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
         .set("X-Quipu-Client", crate::quipu_label::current())
         .send_string(&body)
         .map_err(|e| Error::Projection(format!("POST {url} failed: {e}")))?;
+    if resp
+        .header("X-Quipu-Truncated")
+        .is_some_and(|value| !value.trim().eq_ignore_ascii_case("false"))
+    {
+        return Err(Error::Projection(
+            "truncated or invalid /query response".into(),
+        ));
+    }
     resp.into_string()
         .map_err(|e| Error::Projection(format!("could not read /query response: {e}")))
 }
@@ -200,6 +208,7 @@ pub struct ProjectionRegistry {
     pub(crate) tripwires: Vec<crate::project_tripwire::ProjectedTripwire>,
     pub(crate) memory_policies: Vec<crate::project_memory::MemoryPolicy>,
     pub(crate) trajectory_policies: Option<Vec<crate::project_trajectory::TrajectoryPolicy>>,
+    pub(crate) admission_policies: Option<Vec<crate::project_admission::ProjectedAdmission>>,
     /// Last-known governed LANDING policies — which repositories declare who
     /// may put code on their protected refs.
     ///
@@ -267,6 +276,7 @@ impl ProjectionRegistry {
             tripwires: Vec::new(),
             memory_policies: Vec::new(),
             trajectory_policies: None,
+            admission_policies: None,
             landing_policies: None,
             grounded_rules: Vec::new(),
             grounding: None,
@@ -314,6 +324,7 @@ impl ProjectionRegistry {
             crate::project_memory::fetch_memory_policies(&self.endpoint),
             crate::project_landing::fetch_landing_policies(&self.endpoint),
             crate::project_trajectory::fetch_trajectory_policies(&self.endpoint),
+            crate::project_admission::fetch_admission_policies(&self.endpoint),
         ) {
             (
                 Ok(policies),
@@ -323,6 +334,7 @@ impl ProjectionRegistry {
                 Ok(memory_policies),
                 Ok(landing_policies),
                 Ok(trajectory_policies),
+                Ok(admission_policies),
             ) => {
                 report_overclaims(&policies);
                 self.policies = policies;
@@ -331,6 +343,7 @@ impl ProjectionRegistry {
                 self.memory_policies = memory_policies;
                 self.landing_policies = Some(landing_policies);
                 self.trajectory_policies = Some(trajectory_policies);
+                self.admission_policies = Some(admission_policies);
                 self.grounded_rules = grounded_rules;
                 self.grounding = crate::project_grounding::fetch_grounding_set(
                     &self.endpoint,
@@ -343,13 +356,14 @@ impl ProjectionRegistry {
                 self.freshness = Freshness::Fresh;
                 Ok(())
             }
-            (Err(e), _, _, _, _, _, _)
-            | (_, Err(e), _, _, _, _, _)
-            | (_, _, Err(e), _, _, _, _)
-            | (_, _, _, Err(e), _, _, _)
-            | (_, _, _, _, Err(e), _, _)
-            | (_, _, _, _, _, Err(e), _)
-            | (_, _, _, _, _, _, Err(e)) => {
+            (Err(e), _, _, _, _, _, _, _)
+            | (_, Err(e), _, _, _, _, _, _)
+            | (_, _, Err(e), _, _, _, _, _)
+            | (_, _, _, Err(e), _, _, _, _)
+            | (_, _, _, _, Err(e), _, _, _)
+            | (_, _, _, _, _, Err(e), _, _)
+            | (_, _, _, _, _, _, Err(e), _)
+            | (_, _, _, _, _, _, _, Err(e)) => {
                 self.freshness = Freshness::Stale;
                 Err(e)
             }

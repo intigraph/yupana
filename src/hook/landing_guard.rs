@@ -97,6 +97,7 @@ fn check_landing(payload: &str, landing: &Landing) -> Outcome {
         Err(e) => LandingAuthority::Unknown(e),
     };
 
+    let admission = super::admission_guard::check(&config, &registry, payload, landing, &root);
     let plate = crate::plate::observation(input.session_id.as_deref());
     let request = LandingRequest {
         verb: landing.verb.as_str(),
@@ -118,7 +119,7 @@ fn check_landing(payload: &str, landing: &Landing) -> Outcome {
         record(&config, &request, &decision, landing);
     }
 
-    match decision {
+    let outcome = match decision {
         Decision::Allow { .. } if !request.work_item_readable => {
             // Allowed; only the ATTRIBUTION is unknown. Counted, not printed (aegis-qddvr6).
             super::unknown_quietly(
@@ -138,7 +139,8 @@ fn check_landing(payload: &str, landing: &Landing) -> Outcome {
                 Outcome::Notify(format!("yupana (governed, not blocking): {reason}"))
             }
         }
-    }
+    };
+    super::pre_bash::combine_advisories(outcome, admission)
 }
 
 /// The acting agent, self-reported by the session environment.

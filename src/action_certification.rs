@@ -17,6 +17,10 @@ use crate::errors::{Error, Result};
 pub const SCHEMA_VERSION: &str = "aegis-action-certification/v1";
 pub const CANONICALIZATION: &str = "serde-json-struct-order/v1";
 
+#[path = "action_certification_verify.rs"]
+mod verification;
+pub use verification::verify;
+
 #[derive(Debug, clap::Args)]
 pub struct CertifyArgs {
     /// Path to the existing PKCS#8 verifier key.
