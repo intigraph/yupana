@@ -204,3 +204,6 @@ pub mod verify;
 pub mod watch;
 
 pub use errors::{Error, Result};
+
+/// Explicit, source-bound offline SCIP navigation.
+pub mod scip;

@@ -250,3 +250,7 @@ Use `just`, not raw `cargo`. Conventions are in [`AGENTS.md`](AGENTS.md) and
 ## 📜 License
 
 Licensed under the Apache License, Version 2.0 (see [LICENSE](LICENSE)). Releases before 2026-09-24 were MIT-licensed. Copyright 2026 Steve Brown.
+
+Offline compiler indexes can be queried explicitly with `yupana import-scip`.
+See [Offline SCIP navigation](docs/book/src/reference/offline-scip.md) for the
+source/revision binding contract and coverage limits.
