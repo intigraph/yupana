@@ -1615,6 +1615,67 @@ rules. It does not require a build or launch an external CPG engine. These CPG
 facts are served through the query response; the ordinary referential Turtle
 export and resident daemon <code>/dataflow</code> remain their existing tree-sitter surfaces.
 A build without <code>cpg</code> refuses <code>--interprocedural</code> with an explicit error.</p>
+<h2 id="import-scip--source-bound-offline-navigation"><a class="header" href="#import-scip--source-bound-offline-navigation"><code>import-scip</code> — source-bound offline navigation</a></h2>
+<p>Read an existing SCIP protobuf with an indexing-time source/revision binding.
+See <a href="reference/offline-scip.html">Offline SCIP navigation</a> for the binding format, coverage
+and refusal behavior. This command emits JSON and does not activate an index
+in the daemon.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="offline-scip-navigation"><a class="header" href="#offline-scip-navigation">Offline SCIP navigation</a></h1>
+<p><code>yupana import-scip</code> reads an existing local protobuf SCIP index. It never
+runs an indexer, downloads an index, starts LSP, or changes the resident graph.
+It prints JSON with a <code>scip</code> tier, explicit coverage, producer and protocol
+versions, and source-bound definition/reference occurrences.</p>
+<pre><code class="language-bash">yupana import-scip --root ./checkout --index ./index.scip --binding ./binding.json
+# Restrict the output to one exact SCIP identity:
+yupana import-scip --root ./checkout --index ./index.scip --binding ./binding.json \
+  --symbol 'rust-analyzer cargo example 0.1.0 module/duplicate().'
+</code></pre>
+<p>The binding must be captured alongside the index at indexing time. A binding
+assembled from today's source bytes cannot establish that an older index was
+produced from them. The binding verifies byte consistency; it does not authenticate
+the index producer or establish compiler accuracy. Use trusted index artifacts.</p>
+<pre><code class="language-json">{
+  "version": 1,
+  "repository": "https://example.com/project.git",
+  "revision": "FULL_COMMIT_ID",
+  "index_sha256": "LOWERCASE_SHA256_OF_PROTOBUF",
+  "project_root": "file:///original/indexing/root",
+  "producer": "rust-analyzer",
+  "producer_version": "VERSION_FROM_INDEX_METADATA",
+  "sources": {
+    "src/lib.rs": "LOWERCASE_SHA256_OF_SOURCE_BYTES_AT_INDEXING_TIME"
+  }
+}
+</code></pre>
+<p><code>repository</code> must exactly match the checkout's <code>origin</code> URL, and <code>revision</code>
+must exactly match its full <code>HEAD</code> commit. Each source hash must match both the
+committed blob and the checkout bytes. The source map must equal the complete
+indexed document set. This coverage describes that set, not the whole repository:
+files omitted by the producer remain outside the index's coverage. The original
+project-root URI is bound to index metadata, allowing a checkout to be relocated.
+Only UTF-8 source files and languages supported by the current build are accepted.
+The language declaration must match the file extension. Symbol relationships,
+external symbol documentation and diagnostic payloads are not imported.</p>
+<p>Every import is all-or-nothing. Stale revision/bytes, foreign repository, changed
+index hash, malformed protobuf/symbol/range/role mask, a definition without a
+symbol, unsafe path, duplicate document,
+unsupported encoding/language, or incomplete coverage returns nonzero with
+<code>coverage.accepted: false</code>, a refusal reason, and no occurrences. A successful
+identity lookup with no occurrences means only that the identity is absent from
+this validated index. Local SCIP identities are qualified by document path.</p>
+<p>Identifier ranges use zero-based lines and UTF-8 byte columns, with exclusive
+ends. SCIP UTF-16/UTF-32 positions are checked and normalized; positions inside a
+code unit or outside a line are refused. For legacy indexes omitting document
+position encoding, this importer uses the required UTF-8 metadata encoding. <code>ast_body</code> is a separate tree-sitter
+symbol with one-based inclusive line bounds. It is omitted when the enclosing
+body cannot be matched unambiguously. No SCIP identifier range replaces an AST
+body, and SCIP references are not interpreted as call edges. The returned object
+is a validated import-time snapshot, not a continuously refreshed source view.</p>
+<p>The checked-in synthetic Rust fixture was generated with the compiler-backed
+<code>rust-analyzer scip</code> command; see its <a href="reference/../../../../tests/fixtures/scip/README.html">provenance</a>.
+The importer uses the official <a href="https://github.com/scip-code/scip">SCIP protobuf bindings</a>,
+independently of the initial design inspiration from
+<a href="https://github.com/intuit/infigraph">infigraph</a>. No infigraph code was copied.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration-reference"><a class="header" href="#configuration-reference">Configuration Reference</a></h1>
 <p>Yupana reads the <code>[yupana]</code> table of <code>.bobbin/config.toml</code>. All keys are optional;
 unspecified keys fall back to the defaults shown below.</p>
