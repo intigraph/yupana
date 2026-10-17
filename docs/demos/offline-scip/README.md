@@ -31,3 +31,7 @@ scriptreplay --log-out output.log --log-timing timing.log
 No inline video player is promised. The raw output and metadata were inspected
 for private paths/credentials. The checked-in compiler index is synthetic; no
 indexer, network request or live graph mutation runs during this demo.
+
+Malformed role masks and symbol-less definitions are also rejected; the
+integration suite includes both controls. The output log is marked `-text`
+to retain its original terminal byte counts for timing replay.

@@ -154,8 +154,13 @@ fn validate(
         };
         let ast = crate::extract::extract_structure(text, language)?;
         for occurrence in &doc.occurrences {
+            ensure!(occurrence.symbol_roles >= 0, "negative SCIP symbol roles");
             // Syntax-only occurrences intentionally have no symbol identity.
             if occurrence.symbol.is_empty() {
+                ensure!(
+                    occurrence.symbol_roles & 1 == 0,
+                    "definition without SCIP symbol"
+                );
                 continue;
             }
             ::scip::symbol::parse_symbol(&occurrence.symbol)

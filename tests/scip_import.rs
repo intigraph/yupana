@@ -136,7 +136,7 @@ fn malformed_index_language_paths_ranges_and_coverage_fail_closed() {
         .unwrap()
         .contains("malformed SCIP"));
     let original = scip::types::Index::parse_from_bytes(&bytes).unwrap();
-    for kind in 0..8 {
+    for kind in 0..10 {
         let mut index = original.clone();
         match kind {
             0 => index.documents[0].language = "unsupported".into(),
@@ -146,7 +146,12 @@ fn malformed_index_language_paths_ranges_and_coverage_fail_closed() {
             4 => index.documents.clear(),
             5 => index.documents[0].occurrences[0].symbol = "invalid".into(),
             6 => index.documents[0].position_encoding = protobuf::EnumOrUnknown::from_i32(99),
-            _ => index.metadata.as_mut().unwrap().version = protobuf::EnumOrUnknown::from_i32(99),
+            7 => index.metadata.as_mut().unwrap().version = protobuf::EnumOrUnknown::from_i32(99),
+            8 => index.documents[0].occurrences[0].symbol_roles = -1,
+            _ => {
+                index.documents[0].occurrences[0].symbol.clear();
+                index.documents[0].occurrences[0].symbol_roles = 1;
+            }
         }
         let bytes = index.write_to_bytes().unwrap();
         let mut binding = binding.clone();

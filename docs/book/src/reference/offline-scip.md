@@ -43,7 +43,8 @@ The language declaration must match the file extension. Symbol relationships,
 external symbol documentation and diagnostic payloads are not imported.
 
 Every import is all-or-nothing. Stale revision/bytes, foreign repository, changed
-index hash, malformed protobuf/symbol/range, unsafe path, duplicate document,
+index hash, malformed protobuf/symbol/range/role mask, a definition without a
+symbol, unsafe path, duplicate document,
 unsupported encoding/language, or incomplete coverage returns nonzero with
 `coverage.accepted: false`, a refusal reason, and no occurrences. A successful
 identity lookup with no occurrences means only that the identity is absent from
