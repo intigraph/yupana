@@ -1,0 +1,69 @@
+Script started on 2026-10-17 14:35:32-04:00 [COMMAND="python3 probe.py" <not executed on terminal>]
+BEFORE: installed 0.14.0 baseline
+$ yupana callers invoke FIXTURE --json
+{
+  "callees": [
+    {
+      "distance": 1,
+      "file": "a.py",
+      "name": "leaf",
+      "start_line": 1,
+      "via": "calls"
+    },
+    {
+      "distance": 1,
+      "file": "b.py",
+      "name": "leaf",
+      "start_line": 1,
+      "via": "calls"
+    }
+  ],
+  "callers": [
+    {
+      "distance": 1,
+      "file": "main.py",
+      "name": "positive",
+      "start_line": 3,
+      "via": "called_by"
+    }
+  ],
+  "symbol": "invoke",
+  "tier": "treesitter"
+}
+AFTER: candidate source build
+$ yupana callers invoke FIXTURE --json
+{
+  "call_resolution": [
+    {
+      "callee": "leaf",
+      "caller": "invoke",
+      "candidate_count": 1,
+      "file": "main.py",
+      "line": 2,
+      "status": "import_candidate"
+    }
+  ],
+  "callees": [
+    {
+      "distance": 1,
+      "file": "a.py",
+      "name": "leaf",
+      "start_line": 1,
+      "via": "calls"
+    }
+  ],
+  "callers": [
+    {
+      "distance": 1,
+      "file": "main.py",
+      "name": "positive",
+      "start_line": 3,
+      "via": "called_by"
+    }
+  ],
+  "symbol": "invoke",
+  "tier": "treesitter"
+}
+PASS: two targets -> imported target only; positive caller retained.
+
+Script done on 2026-10-17 14:35:33-04:00 [COMMAND_EXIT_CODE="0"]
