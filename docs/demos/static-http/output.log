@@ -1,0 +1,10 @@
+Script started on 2026-10-17 15:52:19-04:00 [COMMAND="python3 docs/demos/static-http/run.py "$CARGO_TARGET_DIR/debug/examples/http_candidates"" <not executed on terminal>]
+BEFORE df1fb29: scoped HTTP candidate symbol probe exit1/zero; export extraction positive control present
+AFTER: committed static evidence; no runtime dependency claim
+{"caller": null, "method": "GET", "path": "/v1/api/items", "reasons": [], "resolution": "literal", "role": "producer"}
+{"caller": "inner", "method": "GET", "path": "/v1/api/items", "reasons": [], "resolution": "literal", "role": "consumer"}
+{"caller": null, "method": "POST", "path": null, "reasons": ["dynamic_path"], "resolution": "unresolved", "role": "producer"}
+coverage: {"limitations": ["Python only; module-level from-fastapi constructors and requests/httpx module imports", "Same-file literal prefixes/mounts only; no cross-file binding or runtime dispatch", "SDK/client instances and generic request() calls are outside profile coverage", "Generated status is unknown unless an explicit # @generated header is present; never infer nongenerated"], "literal_records": 2, "parse_errors": 0, "profiled_files": 1, "unresolved_records": 1, "unsupported_files": 0}
+Uncommitted replacement excluded: committed source hash and records unchanged
+
+Script done on 2026-10-17 15:52:19-04:00 [COMMAND_EXIT_CODE="0"]

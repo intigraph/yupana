@@ -22,6 +22,7 @@
 
 # Reference
 
+- [Static HTTP candidates](reference/static-http.md)
 - [CLI Commands](reference/cli.md)
 - [Configuration Reference](reference/config.md)
 - [MCP Tools](reference/mcp-tools.md)

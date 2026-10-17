@@ -69,6 +69,8 @@ pub mod grounding;
 pub mod hook;
 pub mod hooks_install;
 pub mod hosting;
+/// Source-bound static HTTP candidate extraction.
+pub mod http_candidates;
 #[cfg(feature = "quipu")]
 pub mod keyword_refresh;
 pub mod keywords;
