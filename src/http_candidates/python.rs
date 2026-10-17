@@ -15,6 +15,7 @@ pub(super) struct Profile<'a> {
     clients: BTreeSet<String>,
     constructors: BTreeMap<String, bool>,
     routers: BTreeMap<String, Router>,
+    handlers: BTreeMap<String, Owner>,
     mounts: BTreeMap<String, Vec<Mount>>,
     ambiguous: BTreeSet<String>,
 }
@@ -212,16 +213,14 @@ impl Profile<'_> {
                         return None;
                     }
                     let name = text(v, self.source);
-                    let tree = n.tree_root();
-                    let found: Vec<_> = descendants(tree)
-                        .into_iter()
-                        .filter(|a| {
-                            a.kind() == "function_definition"
-                                && a.child_by_field_name("name")
-                                    .is_some_and(|v| text(v, self.source) == name)
+                    self.handlers
+                        .get(name)
+                        .filter(|h| {
+                            !self.ambiguous.contains(name)
+                                && caller(n, self.source).is_none()
+                                && h.span.end_byte <= n.start_byte()
                         })
-                        .collect();
-                    (found.len() == 1).then(|| owner(found[0], self.source))
+                        .cloned()
                 });
             keyword(n, "methods", self.source)
                 .filter(|a| ["list", "tuple"].contains(&a.kind()))
@@ -320,18 +319,5 @@ impl Profile<'_> {
         c
     }
 }
-// A local extension avoids coupling syntax navigation to the existing extractor.
-trait Root<'a> {
-    fn tree_root(self) -> Node<'a>;
-}
-impl<'a> Root<'a> for Node<'a> {
-    fn tree_root(mut self) -> Node<'a> {
-        while let Some(p) = self.parent() {
-            self = p;
-        }
-        self
-    }
-}
-
 mod scan;
 pub(super) use scan::extract;

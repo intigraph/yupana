@@ -27,11 +27,19 @@ pub(in crate::http_candidates) fn extract(source: &str, module: &str) -> Result<
         clients: BTreeSet::new(),
         constructors: BTreeMap::new(),
         routers: BTreeMap::new(),
+        handlers: BTreeMap::new(),
         mounts: BTreeMap::new(),
         ambiguous: BTreeSet::new(),
     };
     // Imports and router declarations must be module-level, with explicit bindings.
     for stmt in children(root) {
+        // Explicit registration only resolves stable, undecorated module functions.
+        if stmt.kind() == "function_definition" {
+            let h = owner(stmt, source);
+            if p.handlers.insert(h.name.clone(), h.clone()).is_some() {
+                p.ambiguous.insert(h.name);
+            }
+        }
         if stmt.kind() == "import_statement" {
             for item in children(stmt) {
                 let (name, alias) = if item.kind() == "aliased_import" {
@@ -131,6 +139,7 @@ pub(in crate::http_candidates) fn extract(source: &str, module: &str) -> Result<
             if !p.clients.contains(name)
                 && !p.routers.contains_key(name)
                 && !p.constructors.contains_key(name)
+                && !p.handlers.contains_key(name)
             {
                 continue;
             }
@@ -142,14 +151,24 @@ pub(in crate::http_candidates) fn extract(source: &str, module: &str) -> Result<
                     && ["function_definition", "class_definition"].contains(&parent.kind()))
                 || [
                     "parameters",
+                    "lambda_parameters",
+                    "list_splat_pattern",
+                    "dictionary_splat_pattern",
+                    "as_pattern_target",
                     "default_parameter",
+                    "typed_default_parameter",
                     "typed_parameter",
                     "for_statement",
                     "as_pattern",
                 ]
                 .contains(&parent.kind());
-            let recognized = parent.kind() == "assignment"
-                && p.routers.get(name).is_some_and(|r| r.span == span(parent));
+            let recognized = (parent.kind() == "assignment"
+                && p.routers.get(name).is_some_and(|r| r.span == span(parent)))
+                || (parent.kind() == "function_definition"
+                    && !p.clients.contains(name)
+                    && !p.routers.contains_key(name)
+                    && !p.constructors.contains_key(name)
+                    && p.handlers.get(name).is_some_and(|h| h.span == span(parent)));
             let mut ancestor = Some(parent);
             let mut nested_binding = false;
             while let Some(a) = ancestor {
@@ -201,6 +220,23 @@ pub(in crate::http_candidates) fn extract(source: &str, module: &str) -> Result<
                         }
                     }
                 }
+                if ["as_pattern_target", "case_pattern"].contains(&a.kind()) {
+                    nested_binding = true;
+                }
+                if a.kind() == "import_statement" {
+                    for item in children(a) {
+                        let imported = item.child_by_field_name("name").unwrap_or(item);
+                        let bound = item.child_by_field_name("alias").map_or_else(
+                            || text(imported, source).split('.').next().unwrap_or(""),
+                            |v| text(v, source),
+                        );
+                        let valid = p.clients.contains(name)
+                            && ["requests", "httpx"].contains(&text(imported, source));
+                        if bound == name && !valid {
+                            nested_binding = true;
+                        }
+                    }
+                }
                 if a.kind() == "delete_statement" {
                     nested_binding = true;
                 }
@@ -210,6 +246,12 @@ pub(in crate::http_candidates) fn extract(source: &str, module: &str) -> Result<
                 p.ambiguous.insert(name.into());
             }
         }
+    }
+    if all.iter().any(|n| n.kind() == "wildcard_import") {
+        p.ambiguous.extend(p.clients.iter().cloned());
+        p.ambiguous.extend(p.constructors.keys().cloned());
+        p.ambiguous.extend(p.routers.keys().cloned());
+        p.ambiguous.extend(p.handlers.keys().cloned());
     }
     if p.constructors.keys().any(|name| p.ambiguous.contains(name)) {
         p.ambiguous.extend(p.routers.keys().cloned());

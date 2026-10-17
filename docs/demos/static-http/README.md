@@ -29,7 +29,11 @@ multiple mounts remain distinct. Unknown methods never default to GET.
 Supported imports are module-level `from fastapi import FastAPI, APIRouter` and
 requests/httpx module imports, including aliases. Router bindings, mounts and
 handler resolution are same-file only. Rebinding invalidates aliases
-conservatively for the whole file. Plain unescaped string literals are supported;
+conservatively for the whole file, including variadic parameters and wildcard
+imports. Explicit registration resolves only stable, undecorated module-level
+handler names defined before the call. Nested, shadowed or rebound handlers retain
+`unknown_handler`; decorator routes retain their directly attached handler span.
+Plain unescaped string literals are supported;
 interpolation, cross-file mounts, unknown bases and ambiguous handlers stay
 unresolved. Malformed Python returns explicit diagnostics and no candidates.
 Generated-client status remains unknown except an explicit `# @generated` header,

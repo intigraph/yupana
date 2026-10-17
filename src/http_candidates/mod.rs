@@ -48,6 +48,7 @@ pub fn at(root: &Path, repository: &str, reference: &str) -> Result<Snapshot> {
         coverage: Coverage { limitations: vec![
             "Python only; module-level from-fastapi constructors and requests/httpx module imports".into(),
             "Same-file literal prefixes/mounts only; no cross-file binding or runtime dispatch".into(),
+            "Explicit registration handler names require stable undecorated module functions".into(),
             "SDK/client instances and generic request() calls are outside profile coverage".into(),
             "Generated status is unknown unless an explicit # @generated header is present; never infer nongenerated".into(),
         ], ..Coverage::default() },
