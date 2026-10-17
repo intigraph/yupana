@@ -1,4 +1,4 @@
-Script started on 2026-10-17 14:35:32-04:00 [COMMAND="python3 probe.py" <not executed on terminal>]
+Script started on 2026-10-17 14:41:47-04:00 [COMMAND="python3 probe.py" <not executed on terminal>]
 BEFORE: installed 0.14.0 baseline
 $ yupana callers invoke FIXTURE --json
 {
@@ -37,6 +37,7 @@ $ yupana callers invoke FIXTURE --json
     {
       "callee": "leaf",
       "caller": "invoke",
+      "caller_scope": [],
       "candidate_count": 1,
       "file": "main.py",
       "line": 2,
@@ -66,4 +67,4 @@ $ yupana callers invoke FIXTURE --json
 }
 PASS: two targets -> imported target only; positive caller retained.
 
-Script done on 2026-10-17 14:35:33-04:00 [COMMAND_EXIT_CODE="0"]
+Script done on 2026-10-17 14:41:47-04:00 [COMMAND_EXIT_CODE="0"]

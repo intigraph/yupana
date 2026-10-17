@@ -10,8 +10,8 @@ Run `BASELINE_BIN=/path/to/baseline CANDIDATE_BIN=/path/to/candidate python3 pro
 Baseline identity: version 0.14.0, SHA256
 `f17bfabc2e0b665b0c05891910cb5f00b3f6ccc1ac2b7215ccf8fc683b776647`.
 Candidate executable SHA256:
-`ac6ab2069df01c80cf90eeaa579e3e2e96ed59e019e1fa0ac041ec342263724a`.
-Demonstrated source commit: `48e41906bb5a821e7347c6992e180a73563565db`.
+`f61c67bf71d4a1c593d89acd96b9314b7a361e72a97319ec581ef0b2e1afc2e5`.
+Demonstrated source commit: `42de99e2b897185b1ba84457ef53158aaaaf6983`.
 The [compressed output recording](output.log.gz) and [timing](timing.log) were captured with
 util-linux `script` and replayed successfully with `scriptreplay`. Download both
 and run `gzip -dc output.log.gz > output.log`, then
@@ -34,7 +34,7 @@ explicit aliases, single-level imported module receivers, relative modules and
 package initializers. It does not execute imports, resolve environment-dependent
 search paths or re-exports, infer receiver types, or replace LSP/CPG precision.
 Other languages keep same-language conservative name candidates. Base and
-masked tenant overlays use the same filter; exact enclosing definition line and
+masked tenant overlays use the same filter; exact enclosing definition line, lexical scope and
 file prevent duplicate caller names from stealing call sites.
 
 No upstream code was copied. Infigraph's import-aware resolution inspired the
