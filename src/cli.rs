@@ -1,9 +1,6 @@
 //! The `yupana` command-line interface.
-//! `analyze`, `refs`, `status`, `serve` (MCP), the Phase-2 call-graph commands
-//! `callers`/`impact` and `dataflow`, `export` (referential structure as Turtle,
-//! §5.10/FR-34), the `watch` file-watcher (debounced, tiered re-extraction,
-//! §5.5/FR-17), and the `hook` adapter (edit-reactive harness integration,
-//! §5.9/FR-30) and `verify` (the FR-23/FR-24 edit-buffer verdict) are live.
+//! Live commands include analysis, references, calls/impact, dataflow, export,
+//! watching, hooks, verification, and source-bound offline SCIP navigation.
 //! `promote` is live behind the `quipu` feature (`docs/yupana-spec.md`).
 use std::io;
 use std::path::{Path, PathBuf};
@@ -77,6 +74,8 @@ pub struct Cli {
 /// The available subcommands.
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Validate a source-bound offline SCIP index and emit navigation facts.
+    ImportScip(crate::scip::Args),
     /// Run the MCP server (stdio by default; `--http` for streamable-HTTP).
     Serve {
         /// Serve over streamable-HTTP instead of stdio.
@@ -343,6 +342,7 @@ impl Cli {
         }
         cli_use::declare_quipu_caller(&self.command); // before dispatch (aegis-tjyhh4)
         match &self.command {
+            Commands::ImportScip(args) => args.run(),
             Commands::Analyze { path, at } => self.analyze(path, at.as_deref()),
             Commands::Refs { symbol, path, at } => {
                 self.refs(symbol.as_deref(), path, at.as_deref())
