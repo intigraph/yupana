@@ -68,6 +68,8 @@ impl ParsedFile {
 pub struct OverlaySymbol {
     /// Symbol name.
     pub name: String,
+    /// Lexical scope chain from the extractor.
+    pub scope: Vec<String>,
     /// Symbol kind (lowercase form).
     pub kind: String,
     /// The touched file defining it.
@@ -236,6 +238,7 @@ impl Overlay {
                 let id = u32::try_from(self.symbols.len()).expect("overlay id fits u32");
                 self.symbols.push(OverlaySymbol {
                     name: symbol.name.clone(),
+                    scope: symbol.scope.clone(),
                     kind: symbol.kind.as_str().to_string(),
                     file: (*rel).clone(),
                     start_line: symbol.start_line,
@@ -260,12 +263,12 @@ impl Overlay {
                 .map_or(&[][..], Vec::as_slice);
             for call in &parsed.structure.calls {
                 for &id in ids {
-                    if self.symbols[id as usize].name == call.caller {
-                        self.callees_of[id as usize].push(call.callee.clone());
-                        self.callers_of
-                            .entry(call.callee.clone())
-                            .or_default()
-                            .push(id);
+                    if self.symbols[id as usize].name == call.caller
+                        && self.symbols[id as usize].start_line == call.caller_line
+                    {
+                        let name = super::resolution::target_name(call).to_owned();
+                        self.callees_of[id as usize].push(name.clone());
+                        self.callers_of.entry(name).or_default().push(id);
                     }
                 }
             }

@@ -221,10 +221,10 @@ pub struct NeighborsResponse {
     pub count: usize,
     /// The direct neighbors.
     pub neighbors: Vec<ReachItem>,
-    /// Provenance tier of the whole answer (FR-3). Top-level so a `found: false`
-    /// or empty result — which has no items to tag — still declares its tier
-    /// rather than arriving unlabelled and reading as authoritative.
+    /// Answer provenance, including absent symbols and empty results (FR-3).
     pub tier: String,
+    /// AST candidate uncertainty; missing old-daemon coverage is UNKNOWN.
+    pub call_resolution: Option<Vec<crate::graph::CallResolution>>,
 }
 
 /// The three-way reconciliation of structural vs. historical coupling (FR-11).

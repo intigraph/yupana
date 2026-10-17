@@ -395,6 +395,7 @@ impl YupanaMcpServer {
             found,
             count: neighbors.len(),
             neighbors: neighbors.iter().map(reach_item).collect(),
+            call_resolution: Some(graph.call_resolution(&req.symbol)),
             tier: graph_tier(),
         };
         json_result(&response)

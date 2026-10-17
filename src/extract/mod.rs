@@ -37,36 +37,15 @@ mod go;
 mod java;
 #[cfg(feature = "langs-extra")]
 mod python;
+#[cfg(feature = "langs-extra")]
+mod python_bindings;
 pub mod query;
 mod rust;
 #[cfg(feature = "langs-extra")]
 mod typescript;
 
-/// A resolved-by-name call site: `caller` invokes `callee` at `line`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CallSite {
-    /// Name of the enclosing function the call is made from.
-    pub caller: String,
-    /// Name of the invoked function/method (best-effort, by name).
-    pub callee: String,
-    /// 1-based line of the call.
-    pub line: usize,
-}
-
-/// The structure extracted from one source file: its symbols and call sites.
-#[derive(Debug, Clone, Default)]
-pub struct FileStructure {
-    /// Named symbols defined in the file.
-    pub symbols: Vec<Symbol>,
-    /// Intra-file call sites (caller/callee by name).
-    pub calls: Vec<CallSite>,
-    /// Candidate module-name references from `import` / `use` / `include`
-    /// declarations. These are the path segments seen in imports (best-effort,
-    /// by name — the tree-sitter tier); the exporter resolves them to sibling
-    /// modules by matching module stems (§9.2 `bobbin:imports`,
-    /// [`Tier::TreeSitter`]).
-    pub import_refs: Vec<String>,
-}
+mod structure;
+pub use structure::{CallBinding, CallSite, FileStructure};
 
 /// A per-language extraction recipe. Each grammar module builds one of these; the
 /// generic [`walk`] below is driven entirely by these function pointers, so no
@@ -323,7 +302,7 @@ pub fn extract_structure(source: &str, language: &str) -> Result<FileStructure> 
         .parse(source, None)
         .ok_or_else(|| Error::Parse("tree-sitter produced no tree".to_string()))?;
 
-    Ok(walk(&spec, tree.root_node(), source.as_bytes()))
+    Ok(walk(&spec, tree.root_node(), source.as_bytes(), language))
 }
 
 /// Symbols in one file that share a NAME — and therefore share the
@@ -395,7 +374,13 @@ pub fn name_collisions(symbols: &[Symbol]) -> Vec<NameCollision> {
 /// Language-agnostic traversal: collect symbols, intra-file calls, and import
 /// references by asking `spec` about each node. Iterative so a deeply-nested
 /// tree can't overflow the stack.
-fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8]) -> FileStructure {
+fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8], _language: &str) -> FileStructure {
+    #[cfg(feature = "langs-extra")]
+    let hints = if _language == "python" {
+        python_bindings::hints(root, bytes)
+    } else {
+        Default::default()
+    };
     let mut symbols = Vec::new();
     let mut calls = Vec::new();
     let mut import_refs = Vec::new();
@@ -403,7 +388,8 @@ fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8]) -> FileStructure {
     // site can be attributed to its caller) and the chain of named enclosing
     // scopes (so a symbol's identity survives a same-named sibling elsewhere in
     // the file — aegis-1q14).
-    let mut stack: Vec<(Node, Option<String>, Vec<String>)> = vec![(root, None, Vec::new())];
+    type Frame<'tree> = (Node<'tree>, Option<(String, usize)>, Vec<String>);
+    let mut stack: Vec<Frame<'_>> = vec![(root, None, Vec::new())];
 
     while let Some((node, enclosing, scope)) = stack.pop() {
         let mut inner = enclosing.clone();
@@ -419,7 +405,7 @@ fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8]) -> FileStructure {
                     tier: Tier::TreeSitter,
                 });
                 if (spec.is_function_kind)(node.kind()) {
-                    inner = Some(name);
+                    inner = Some((name, node.start_position().row + 1));
                 }
             }
         }
@@ -427,7 +413,15 @@ fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8]) -> FileStructure {
         if (spec.is_call_kind)(node.kind()) {
             if let (Some(caller), Some(callee)) = (&enclosing, (spec.callee_name)(node, bytes)) {
                 calls.push(CallSite {
-                    caller: caller.clone(),
+                    caller: caller.0.clone(),
+                    caller_line: caller.1,
+                    #[cfg(feature = "langs-extra")]
+                    binding: hints
+                        .get(&node.id())
+                        .cloned()
+                        .unwrap_or(CallBinding::Unqualified),
+                    #[cfg(not(feature = "langs-extra"))]
+                    binding: CallBinding::Unqualified,
                     callee,
                     line: node.start_position().row + 1,
                 });

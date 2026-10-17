@@ -236,6 +236,92 @@ impl TenantView<'_> {
     }
 }
 
+impl TenantView<'_> {
+    fn language(&self, node: SymRef) -> &'static str {
+        match node {
+            SymRef::Base(ix) => self.base_language(ix).unwrap_or("unknown"),
+            SymRef::Overlay(id) => self.overlay.expect("overlay node").symbol(id).language,
+        }
+    }
+
+    fn scope(&self, node: SymRef) -> &[String] {
+        match node {
+            SymRef::Base(ix) => &self.base.graph().graph[ix].scope,
+            SymRef::Overlay(id) => &self.overlay.expect("overlay node").symbol(id).scope,
+        }
+    }
+
+    fn calls(&self, node: SymRef) -> Vec<&crate::extract::CallSite> {
+        match node {
+            SymRef::Base(ix) => self
+                .base
+                .graph()
+                .calls
+                .get(&ix)
+                .into_iter()
+                .flatten()
+                .collect(),
+            SymRef::Overlay(id) => {
+                let overlay = self.overlay.expect("overlay node");
+                let me = overlay.symbol(id);
+                overlay
+                    .parsed(&me.file)
+                    .into_iter()
+                    .flat_map(|p| &p.structure.calls)
+                    .filter(|call| call.caller == me.name && call.caller_line == me.start_line)
+                    .collect()
+            }
+        }
+    }
+
+    fn targets_for_call(&self, node: SymRef, call: &crate::extract::CallSite) -> Vec<SymRef> {
+        let me = self.meta(node);
+        self.defs_of_name(
+            crate::graph::resolution::target_name(call),
+            Some(self.language(node)),
+        )
+        .into_iter()
+        .filter(|&target| {
+            crate::graph::resolution::accepts(
+                call,
+                &me.file,
+                &self.meta(target).file,
+                self.scope(target),
+            )
+        })
+        .collect()
+    }
+
+    fn call_targets(&self, node: SymRef) -> Vec<SymRef> {
+        let mut out = Vec::new();
+        for call in self.calls(node) {
+            for target in self.targets_for_call(node, call) {
+                if target != node && !out.contains(&target) {
+                    out.push(target);
+                }
+            }
+        }
+        out
+    }
+
+    /// Per-call candidate evidence over the same masked base+overlay view.
+    #[must_use]
+    pub fn call_resolution(&self, caller: &str) -> Vec<crate::graph::CallResolution> {
+        let mut out = Vec::new();
+        for node in self.seeds(caller) {
+            for call in self.calls(node) {
+                out.push(crate::graph::resolution::report(
+                    &self.meta(node).file,
+                    call,
+                    self.targets_for_call(node, call).len(),
+                ));
+            }
+        }
+        out.sort_by(|a, b| (&a.file, a.line, &a.callee).cmp(&(&b.file, b.line, &b.callee)));
+        out
+    }
+}
+
 impl Adjacency for TenantView<'_> {
     type Node = SymRef;
 
@@ -244,91 +330,32 @@ impl Adjacency for TenantView<'_> {
     }
 
     fn neighbors(&self, node: SymRef, dir: Dir) -> Vec<SymRef> {
-        let mut out = Vec::new();
-        match (node, dir) {
-            (SymRef::Base(ix), Dir::Callees) => {
-                // Materialized base edges; a callee in a touched file is
-                // remapped BY NAME to the overlay's definitions (deduped —
-                // several masked defs of one name remap to the same targets).
-                let language = self.base_language(ix);
-                let mut remap: Vec<&str> = Vec::new();
-                for callee in self
-                    .base
-                    .graph()
-                    .graph
-                    .neighbors_directed(ix, PgDirection::Outgoing)
-                {
-                    let n = &self.base.graph().graph[callee];
-                    if self.touched(&n.file) {
-                        if !remap.contains(&n.name.as_str()) {
-                            remap.push(&n.name);
-                        }
-                    } else {
-                        out.push(SymRef::Base(callee));
-                    }
-                }
-                if let Some(overlay) = self.overlay {
-                    for name in remap {
-                        for &id in overlay.defs(name) {
-                            if language.is_none_or(|l| overlay.symbol(id).language == l) {
-                                out.push(SymRef::Overlay(id));
-                            }
-                        }
-                    }
-                }
-            }
-            (SymRef::Base(ix), Dir::Callers) => {
-                // Base callers via materialized edges (untouched files only —
-                // a touched caller's calls are the OVERLAY's records now, so
-                // a deleted call never resurrects), plus overlay callers of
-                // this node's name.
-                for caller in self
-                    .base
-                    .graph()
-                    .graph
-                    .neighbors_directed(ix, PgDirection::Incoming)
-                {
-                    let file = &self.base.graph().graph[caller].file;
-                    if !self.touched(file) {
-                        out.push(SymRef::Base(caller));
-                    }
-                }
-                if let Some(overlay) = self.overlay {
-                    let me = &self.base.graph().graph[ix];
-                    let language = self.base_language(ix);
-                    for &id in overlay.callers_of(&me.name) {
-                        if language.is_none_or(|l| overlay.symbol(id).language == l) {
-                            out.push(SymRef::Overlay(id));
-                        }
-                    }
-                }
-            }
-            (SymRef::Overlay(id), Dir::Callees) => {
-                let overlay = self.overlay.expect("an overlay id implies an overlay");
-                let me = overlay.symbol(id);
-                for name in overlay.callee_names(id) {
-                    for target in self.defs_of_name(name, Some(me.language)) {
-                        if target != node && !out.contains(&target) {
-                            out.push(target);
-                        }
-                    }
-                }
-            }
-            (SymRef::Overlay(id), Dir::Callers) => {
-                let overlay = self.overlay.expect("an overlay id implies an overlay");
-                let me = overlay.symbol(id);
-                for &caller in overlay.callers_of(&me.name) {
-                    if overlay.symbol(caller).language == me.language && caller != id {
-                        out.push(SymRef::Overlay(caller));
-                    }
-                }
-                // Base callers of my NAME, via the FR-16 frontier index — this
-                // now answers even when the overlay INTRODUCED the name (zero
-                // base defs), which the old edge-walk could not (yupana #3).
-                out.extend(self.base_callers_of_name(&me.name, me.language));
-            }
+        if matches!(dir, Dir::Callees) {
+            return self.call_targets(node);
         }
-        out
+        let me = self.meta(node);
+        let language = self.language(node);
+        let mut candidates = self.base_callers_of_name(&me.name, language);
+        if let Some(overlay) = self.overlay {
+            candidates.extend(
+                overlay
+                    .callers_of(&me.name)
+                    .iter()
+                    .copied()
+                    .map(SymRef::Overlay),
+            );
+        }
+        candidates.retain(|&caller| {
+            caller != node
+                && self.language(caller) == language
+                && self.call_targets(caller).contains(&node)
+        });
+        candidates.sort_by_key(|&n| {
+            let m = self.meta(n);
+            (m.file, m.start_line)
+        });
+        candidates.dedup();
+        candidates
     }
 
     fn meta(&self, node: SymRef) -> NodeMeta {
