@@ -86,6 +86,7 @@ pub(super) fn neighbors(
             symbol: reply.symbol.clone(),
             found: reply.found,
             count: reply.neighbors.len(),
+            call_resolution: reply.call_resolution.clone(),
             neighbors: reply
                 .neighbors
                 .iter()

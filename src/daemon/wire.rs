@@ -153,6 +153,9 @@ pub struct Neighbors {
     pub neighbors: Vec<ReachedItem>,
     /// Provenance tier of these facts.
     pub tier: String,
+    /// Per-call candidate evidence for the queried caller. Absent from older daemons.
+    #[serde(default)]
+    pub call_resolution: Option<Vec<crate::graph::CallResolution>>,
 }
 
 /// Reply for `/impact` — the transitive blast radius of changing a symbol.
@@ -343,5 +346,17 @@ impl MeasureReply {
                 reason: other.unmeasured_reason(),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod call_resolution_wire_tests {
+    #[test]
+    fn legacy_neighbor_reply_has_unknown_resolution_coverage() {
+        let reply: super::Neighbors = serde_json::from_str(
+            r#"{"symbol":"invoke","found":true,"neighbors":[],"tier":"treesitter"}"#,
+        )
+        .unwrap();
+        assert!(reply.call_resolution.is_none());
     }
 }

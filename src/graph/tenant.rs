@@ -28,7 +28,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use petgraph::graph::NodeIndex;
-use petgraph::Direction as PgDirection;
 
 use super::overlay::{Overlay, ParsedFile};
 use super::{Adjacency, Base, Dir, NodeMeta, Reached};
