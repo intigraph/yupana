@@ -1,0 +1,12 @@
+Script started on 2026-10-17 15:03:51-04:00 [COMMAND="python3 docs/demos/offline-scip/run.py" <not executed on terminal>]
+before: yupana 0.14.0; binary sha256=f17bfabc2e0b665b0c05891910cb5f00b3f6ccc1ac2b7215ccf8fc683b776647
+candidate: yupana 0.14.0; binary sha256=80e649529608e6bf09726676f63243361a8b72471834929b55504fecbd9918d3
+$ yupana import-scip --root SYNTHETIC --index FIXTURE --binding ATTESTATION
+before: exit=2; error: unrecognized subcommand 'import-scip'
+candidate: tier=scip; coverage={'accepted': True, 'declared_documents': 1, 'indexed_documents': 1, 'validated_documents': 1, 'refusal': None}
+  rust-analyzer cargo offline-scip-fixture 0.1.0 left/duplicate().: one definition + one reference; identifier={'start_line': 1, 'start_byte': 11, 'end_line': 1, 'end_byte': 20}; AST body lines=2..4
+  rust-analyzer cargo offline-scip-fixture 0.1.0 right/duplicate().: one definition + one reference; identifier={'start_line': 6, 'start_byte': 11, 'end_line': 6, 'end_byte': 20}; AST body lines=7..9
+stale-byte control: exit=1; facts=0; stale source bytes: src/lib.rs
+PASS: distinct identities, separate body spans, stale-byte refusal
+
+Script done on 2026-10-17 15:03:51-04:00 [COMMAND_EXIT_CODE="0"]

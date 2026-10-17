@@ -545,3 +545,10 @@ rules. It does not require a build or launch an external CPG engine. These CPG
 facts are served through the query response; the ordinary referential Turtle
 export and resident daemon `/dataflow` remain their existing tree-sitter surfaces.
 A build without `cpg` refuses `--interprocedural` with an explicit error.
+
+## `import-scip` — source-bound offline navigation
+
+Read an existing SCIP protobuf with an indexing-time source/revision binding.
+See [Offline SCIP navigation](offline-scip.md) for the binding format, coverage
+and refusal behavior. This command emits JSON and does not activate an index
+in the daemon.
