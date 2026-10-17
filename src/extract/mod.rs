@@ -45,6 +45,7 @@ mod rust;
 mod typescript;
 
 mod structure;
+use structure::CallableScope;
 pub use structure::{CallBinding, CallSite, FileStructure};
 
 /// A per-language extraction recipe. Each grammar module builds one of these; the
@@ -388,7 +389,7 @@ fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8], _language: &str) -> FileSt
     // site can be attributed to its caller) and the chain of named enclosing
     // scopes (so a symbol's identity survives a same-named sibling elsewhere in
     // the file — aegis-1q14).
-    type Frame<'tree> = (Node<'tree>, Option<(String, usize)>, Vec<String>);
+    type Frame<'tree> = (Node<'tree>, Option<CallableScope>, Vec<String>);
     let mut stack: Vec<Frame<'_>> = vec![(root, None, Vec::new())];
 
     while let Some((node, enclosing, scope)) = stack.pop() {
@@ -405,7 +406,11 @@ fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8], _language: &str) -> FileSt
                     tier: Tier::TreeSitter,
                 });
                 if (spec.is_function_kind)(node.kind()) {
-                    inner = Some((name, node.start_position().row + 1));
+                    inner = Some(CallableScope {
+                        name,
+                        line: node.start_position().row + 1,
+                        scope: scope.clone(),
+                    });
                 }
             }
         }
@@ -413,8 +418,9 @@ fn walk(spec: &GrammarSpec, root: Node, bytes: &[u8], _language: &str) -> FileSt
         if (spec.is_call_kind)(node.kind()) {
             if let (Some(caller), Some(callee)) = (&enclosing, (spec.callee_name)(node, bytes)) {
                 calls.push(CallSite {
-                    caller: caller.0.clone(),
-                    caller_line: caller.1,
+                    caller: caller.name.clone(),
+                    caller_line: caller.line,
+                    caller_scope: caller.scope.clone(),
                     #[cfg(feature = "langs-extra")]
                     binding: hints
                         .get(&node.id())

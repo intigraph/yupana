@@ -199,3 +199,16 @@ fn decorated_methods_skip_class_imports_but_keep_enclosing_function_closures() {
         assert_eq!(targets(&g,"invoke"),["b.py"]);
     }
 }
+
+#[test]
+fn caller_scope_separates_same_line_methods_in_distinct_impl_blocks() {
+    let g = graph(&[("lib.rs", "fn alpha() {} fn beta() {} struct A; struct B; impl A { fn same() { alpha(); } } impl B { fn same() { beta(); } }")]);
+    assert_eq!(g.call_resolution("same").len(), 2);
+    for &ix in &g.by_name["same"] {
+        assert_eq!(g.graph.neighbors(ix).count(), 1);
+    }
+    assert_ne!(
+        g.call_resolution("same")[0].caller_scope,
+        g.call_resolution("same")[1].caller_scope
+    );
+}

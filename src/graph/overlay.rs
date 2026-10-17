@@ -265,6 +265,7 @@ impl Overlay {
                 for &id in ids {
                     if self.symbols[id as usize].name == call.caller
                         && self.symbols[id as usize].start_line == call.caller_line
+                        && self.symbols[id as usize].scope == call.caller_scope
                     {
                         let name = super::resolution::target_name(call).to_owned();
                         self.callees_of[id as usize].push(name.clone());

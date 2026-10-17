@@ -58,6 +58,8 @@ pub struct CallResolution {
     pub file: String,
     /// Enclosing caller.
     pub caller: String,
+    /// Lexical scope containing the caller definition.
+    pub caller_scope: Vec<String>,
     /// Call line.
     pub line: usize,
     /// Name as written (possibly an alias).
@@ -81,6 +83,7 @@ pub(super) fn report(file: &str, call: &CallSite, candidate_count: usize) -> Cal
     CallResolution {
         file: file.to_owned(),
         caller: call.caller.clone(),
+        caller_scope: call.caller_scope.clone(),
         line: call.line,
         callee: call.callee.clone(),
         status: status.to_owned(),

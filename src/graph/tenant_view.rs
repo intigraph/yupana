@@ -268,7 +268,11 @@ impl TenantView<'_> {
                     .parsed(&me.file)
                     .into_iter()
                     .flat_map(|p| &p.structure.calls)
-                    .filter(|call| call.caller == me.name && call.caller_line == me.start_line)
+                    .filter(|call| {
+                        call.caller == me.name
+                            && call.caller_line == me.start_line
+                            && call.caller_scope == me.scope
+                    })
                     .collect()
             }
         }

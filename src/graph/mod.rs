@@ -233,6 +233,7 @@ impl CodeGraph {
                 if language_of.get(&from) != Some(&language)
                     || graph[from].file != file
                     || graph[from].start_line != call.caller_line
+                    || graph[from].scope != call.caller_scope
                 {
                     continue;
                 }

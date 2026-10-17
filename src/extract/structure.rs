@@ -33,6 +33,8 @@ pub struct CallSite {
     pub line: usize,
     /// Exact enclosing function definition line; avoids duplicate-name callers.
     pub caller_line: usize,
+    /// Lexical scope containing the caller definition.
+    pub caller_scope: Vec<String>,
     /// Best-effort lexical evidence, never a type-checker guarantee.
     pub binding: CallBinding,
 }
@@ -50,4 +52,12 @@ pub struct FileStructure {
     /// modules by matching module stems (§9.2 `bobbin:imports`,
     /// [`crate::types::Tier::TreeSitter`]).
     pub import_refs: Vec<String>,
+}
+
+/// Walker's enclosing callable identity, independent of names elsewhere.
+#[derive(Clone)]
+pub(super) struct CallableScope {
+    pub name: String,
+    pub line: usize,
+    pub scope: Vec<String>,
 }
