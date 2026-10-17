@@ -18,6 +18,7 @@ mod brief_view;
 mod community;
 mod lookup;
 mod overlay;
+mod resolution;
 mod tenant;
 
 use std::collections::HashMap;
@@ -33,6 +34,7 @@ pub use base::{Base, FileFacts};
 pub use blast::{reachable_over, Adjacency, Dir, NodeMeta, Reached};
 pub use community::{Community, CommunityMember};
 pub use overlay::{update_frontier, update_frontier_bounded, Overlay, OverlaySymbol, ParsedFile};
+pub use resolution::CallResolution;
 pub use tenant::{
     BoundedFrontier, OverlayStatus, RegistryStatus, SharingStats, SymRef, TenantRegistry,
     TenantView, ViewSymbol,
@@ -43,6 +45,8 @@ pub use tenant::{
 pub struct SymbolNode {
     /// Symbol name.
     pub name: String,
+    /// Lexical scope chain from the extractor.
+    pub scope: Vec<String>,
     /// Symbol kind (lowercase form).
     pub kind: String,
     /// File the symbol is defined in (relative to the build root).
@@ -69,6 +73,7 @@ pub struct CodeGraph {
     /// overlay ADDS (zero base definitions) has no incoming edge — but its base
     /// callers are still here, under its name. Deduplicated per name.
     callers_by_callee: HashMap<String, Vec<NodeIndex>>,
+    calls: HashMap<NodeIndex, Vec<crate::extract::CallSite>>,
 }
 
 /// Why a baseline could not be built. Distinct from a baseline that is EMPTY:
@@ -101,9 +106,9 @@ impl std::fmt::Display for BaselineError {
 impl CodeGraph {
     /// Build the call graph for the Rust files under `root`.
     ///
-    /// Call edges are resolved by name (best-effort): a call to `foo` links to
-    /// every symbol named `foo`. Precise resolution arrives with the LSP/CPG
-    /// tiers.
+    /// Call edges retain conservative same-language name candidates. Supported
+    /// Python lexical imports filter candidates by module; per-call uncertainty
+    /// remains visible through `call_resolution`. This is not type resolution.
     pub fn build(root: &Path) -> Result<Self> {
         let sources =
             crate::extract::source_files(root)
@@ -188,7 +193,7 @@ impl CodeGraph {
         // reaching FOUR files, one per language, from a single caller each. An
         // over-reported radius is a FALSE DENY, which blocks legitimate work just
         // as confidently as the silent allow it replaced.
-        let mut calls: Vec<(String, String, &'static str)> = Vec::new();
+        let mut calls = Vec::new();
         let mut language_of: HashMap<NodeIndex, &'static str> = HashMap::new();
 
         for (rel, source, language) in sources {
@@ -202,6 +207,7 @@ impl CodeGraph {
             for symbol in structure.symbols {
                 let idx = graph.add_node(SymbolNode {
                     name: symbol.name.clone(),
+                    scope: symbol.scope.clone(),
                     kind: symbol.kind.as_str().to_string(),
                     file: rel.clone(),
                     start_line: symbol.start_line,
@@ -212,51 +218,47 @@ impl CodeGraph {
                 by_name.entry(symbol.name).or_default().push(idx);
             }
             for call in structure.calls {
-                calls.push((call.caller, call.callee, language));
+                calls.push((rel.clone(), call, language));
             }
         }
 
         let mut callers_by_callee: HashMap<String, Vec<NodeIndex>> = HashMap::new();
-        for (caller, callee, language) in calls {
-            let Some(callers) = by_name.get(&caller) else {
+        let mut call_records: HashMap<NodeIndex, Vec<crate::extract::CallSite>> = HashMap::new();
+        for (file, call, language) in calls {
+            let Some(callers) = by_name.get(&call.caller) else {
                 continue;
             };
-            // Record the frontier index FIRST, before the resolve-or-skip below:
-            // a call to a callee with no definition here (the overlay-new-name
-            // case, FR-16) has no edge, but its base callers still belong under
-            // its name. Language-checked on the caller so cross-language name
-            // collisions are not recorded (the same rule the edges use).
+            let name = resolution::target_name(&call);
             for &from in callers {
-                if language_of.get(&from) == Some(&language) {
-                    let slot = callers_by_callee.entry(callee.clone()).or_default();
-                    if !slot.contains(&from) {
-                        slot.push(from);
+                if language_of.get(&from) != Some(&language)
+                    || graph[from].file != file
+                    || graph[from].start_line != call.caller_line
+                    || graph[from].scope != call.caller_scope
+                {
+                    continue;
+                }
+                let slot = callers_by_callee.entry(name.to_owned()).or_default();
+                if !slot.contains(&from) {
+                    slot.push(from);
+                }
+                if let Some(callees) = by_name.get(name) {
+                    for &to in callees {
+                        if from != to
+                            && language_of.get(&to) == Some(&language)
+                            && resolution::accepts(&call, &file, &graph[to].file, &graph[to].scope)
+                        {
+                            graph.add_edge(from, to, EdgeKind::Calls);
+                        }
                     }
                 }
-            }
-            // Materialized edges still require the callee to resolve to a def.
-            let Some(callees) = by_name.get(&callee) else {
-                continue;
-            };
-            for &from in callers {
-                for &to in callees {
-                    // Same language on BOTH ends, and the same language the call
-                    // was parsed from. Cross-language name matches are
-                    // coincidences, not edges.
-                    if from != to
-                        && language_of.get(&from) == Some(&language)
-                        && language_of.get(&to) == Some(&language)
-                    {
-                        graph.add_edge(from, to, EdgeKind::Calls);
-                    }
-                }
+                call_records.entry(from).or_default().push(call.clone());
             }
         }
-
         Self {
             graph,
             by_name,
             callers_by_callee,
+            calls: call_records,
         }
     }
 
@@ -485,3 +487,6 @@ fn top() { mid(); }
         assert!(err.to_string().contains("not an empty baseline"));
     }
 }
+
+#[cfg(all(test, feature = "langs-extra"))]
+mod resolution_tests;

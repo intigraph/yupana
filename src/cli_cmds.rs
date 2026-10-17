@@ -26,6 +26,7 @@ pub(crate) fn callers(json: bool, quiet: bool, symbol: &str, path: &Path) -> any
             "symbol": symbol,
             "callers": reached_json(&callers),
             "callees": reached_json(&callees),
+            "call_resolution": graph.call_resolution(symbol),
             // Provenance tier of the answer (FR-3). The call graph is tree-sitter,
             // so this is served, not left unlabelled — an empty result declares it
             // too. Matches the MCP NeighborsResponse.tier.
@@ -35,6 +36,14 @@ pub(crate) fn callers(json: bool, quiet: bool, symbol: &str, path: &Path) -> any
     } else {
         print_reached(&format!("callers of {symbol}"), &callers, quiet);
         print_reached(&format!("callees of {symbol}"), &callees, quiet);
+        if !quiet {
+            for row in graph.call_resolution(symbol) {
+                println!(
+                    "{}:{} {}: {} ({} candidate(s), treesitter)",
+                    row.file, row.line, row.callee, row.status, row.candidate_count
+                );
+            }
+        }
     }
     Ok(())
 }

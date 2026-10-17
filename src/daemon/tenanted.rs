@@ -32,6 +32,7 @@ impl ResidentEngine {
         self.with_view(tenant, |view| Neighbors {
             symbol: symbol.to_string(),
             found: view.has_symbol(symbol),
+            call_resolution: Some(view.call_resolution(symbol)),
             neighbors: reachable_over(view, symbol, dir, 1)
                 .iter()
                 .map(super::wire::reached_item)

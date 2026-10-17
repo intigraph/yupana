@@ -230,6 +230,7 @@ impl ResidentEngine {
             symbol: symbol.to_string(),
             found: graph.has_symbol(symbol),
             neighbors: graph.direct(symbol, dir).iter().map(reached_item).collect(),
+            call_resolution: Some(graph.call_resolution(symbol)),
             tier: graph_tier(),
         }
     }
