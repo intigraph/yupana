@@ -1182,6 +1182,26 @@ calls, and "nothing was ingested here" and "these orders are fine" would
 otherwise be the same success response — a green light over a dead backend.</p>
 <p>A guard with <strong>no policies</strong> is refused for the same reason: it cannot clear an
 order set it never checked.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="static-http-candidates"><a class="header" href="#static-http-candidates">Static HTTP candidates</a></h1>
+<p>The opt-in library API <code>yupana::export::http_candidates_at</code> returns a typed JSON
+snapshot of committed Python FastAPI routes and explicit requests/httpx calls.
+It requires <code>langs-extra</code>; an unsupported build reports unavailable. It does
+not change the default Turtle export, install schemas, or ingest a graph.</p>
+<p>Run the synthetic <a href="reference/../../../demos/static-http/README.html">offline demonstration</a>
+for the exact supported syntax, expected records and example exporter command.
+The snapshot retains source hashes, revision, extractor/profile version,
+occurrence and caller/handler spans, method, full literal path, and unresolved
+reasons. Treat every record as tree-sitter candidate evidence.</p>
+<p>Before admitting a snapshot as current, call
+<code>yupana::http_candidates::verify_current(root, repository, &amp;snapshot)</code>. It rejects
+a moved HEAD, foreign repository identity, changed source bytes, mismatched
+committed blobs and unsafe paths. Historical snapshots do not become current
+by substituting a new revision.</p>
+<p>Dynamic paths, unknown mounts/bases, ambiguous bindings and explicit generated
+headers remain unresolved. Unknown generated-client status never means false.
+The bounded profile does not cover client instances, SDKs, cross-file binding or
+other frameworks; the coverage manifest discloses those limits. A consumer and
+producer sharing a literal path do not establish a runtime dependency.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="cli-commands"><a class="header" href="#cli-commands">CLI Commands</a></h1>
 <pre><code class="language-text">USAGE:
     yupana &lt;COMMAND&gt;
