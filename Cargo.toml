@@ -91,6 +91,7 @@ glob = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"       # content-hash structural sharing (FR-15)
 hex = "0.4"
+url = "2" # HTTP authority parsing; no network access
 colored = "3"
 indicatif = "0.17"
 

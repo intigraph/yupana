@@ -22,6 +22,7 @@
 
 # Reference
 
+- [Static HTTP candidates](reference/static-http.md)
 - [CLI Commands](reference/cli.md)
 - [Offline SCIP navigation](reference/offline-scip.md)
 - [Configuration Reference](reference/config.md)

@@ -1,13 +1,9 @@
-//! Export the referential structure as RDF Turtle in the `bobbin:` code ontology.
+//! Export code structure as RDF Turtle, with opt-in typed HTTP snapshots.
 //!
-//! This is the governed projection of Yupana's live graph — the substrate under
-//! Phase-4 promotion (`--to quipu`). It emits *precise, typed referential
-//! structure* (modules, symbols, `definedIn` / `calls` / `imports` edges),
-//! **not** the embedding-oriented chunking Bobbin produces. Facts validate
-//! against Quipu's
-//! `shapes/code-entities.ttl` (`CodeModule`, `CodeSymbol`), whose namespace this
-//! mirrors. Document/`Section` nodes and `Section → references → CodeSymbol`
-//! edges fold in as the markdown extractor lands (spec §5.10).
+//! The default projection retains precise modules, symbols, calls, imports and
+//! documentation references in the code ontology, validated by
+//! `shapes/code-entities.ttl`. HTTP candidates are a separate typed snapshot;
+//! the default Turtle export never enrolls or ingests their proposed schema.
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
@@ -15,6 +11,8 @@ use std::path::Path;
 use crate::docref::{doc_files, extract_doc_sections, Mention};
 use crate::errors::Result;
 use crate::extract::{extract_structure, source_files};
+/// Opt-in typed static HTTP evidence; no RDF schema or graph activation.
+pub use crate::http_candidates::at as http_candidates_at;
 
 /// The code-ontology namespace (matches `shapes/code-entities.ttl`).
 pub(crate) const ONTO: &str = "http://aegis.gastown.local/ontology/";
