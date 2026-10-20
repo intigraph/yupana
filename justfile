@@ -143,3 +143,9 @@ session-guard *args="--selftest":
 # Exercise the real changelog renderer on synthetic release commits.
 test-changelog:
     python3 scripts/test_changelog_scrub.py
+
+# Copied repository-pendant source and publication refusal controls (rdflib 7.6.0).
+repository-pendant-tests:
+    python3 scripts/test-repository-knowledge.py
+    python3 scripts/test-repository-share-query.py
+    python3 scripts/test-repository-share-publication.py
