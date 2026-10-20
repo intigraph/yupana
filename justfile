@@ -143,3 +143,8 @@ session-guard *args="--selftest":
 # Exercise the real changelog renderer on synthetic release commits.
 test-changelog:
     python3 scripts/test_changelog_scrub.py
+
+# Verify the standalone installer using private release fixtures.
+installer-check:
+    sh -n install.sh
+    python3 scripts/test-install-release.py
