@@ -29,6 +29,8 @@ Default configuration still publishes only the existing Quipu corpus. Enabling
 another repository requires its actual trusted host configuration and a clean
 release containing this job; committing this source does not publish an asset.
 
+Native build and MCP workers use a private HOME and XDG directories, with a minimal environment that excludes ambient endpoints, tokens and proxy settings. Only the explicit publication-policy helper retains the caller environment; this exception does not extend to indexing, validation or receiver probes.
+
 The publisher requires the engine's model/digest/dimension manifest recipe.
 Loading and vector rebuilding belong to the native engine. No hosted job gets
 private publication policy or a new credential route. These source controls do

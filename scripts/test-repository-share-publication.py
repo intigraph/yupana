@@ -7,6 +7,7 @@
 import importlib.util
 import json
 import os
+import sys
 from unittest.mock import patch
 from pathlib import Path
 import tempfile
@@ -21,6 +22,8 @@ def load(name, path):
     spec.loader.exec_module(module)
     return module
 
+
+builder = load("builder_test", ROOT / "build-repository-share.py")
 
 publisher = load("publisher_test", ROOT / "publish_repository_share.py")
 verifier = load("verifier_test", ROOT / "verify-repository-share.py")
@@ -132,6 +135,57 @@ class Publication(unittest.TestCase):
             verifier.wait("v1.2.3", self.revision, attempts=2, pause=pauses.append, run=run)
         self.assertEqual(len(calls), 2)
         self.assertEqual(pauses, [30])
+
+
+class WorkerEnvironment(unittest.TestCase):
+    def test_actual_command_and_mcp_child_do_not_inherit_host_configuration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            host, private = root / "host", root / "private"
+            host.mkdir()
+            private.mkdir()
+            (host / "host-marker").write_text("synthetic fixture")
+            ambient = {
+                "HOME": str(host), "XDG_CONFIG_HOME": str(host),
+                "XDG_DATA_HOME": str(host), "XDG_CACHE_HOME": str(host),
+                "XDG_STATE_HOME": str(host), "QUIPU_SERVER": "https://fixture.invalid",
+                "QUIPU_AUTH_TOKEN": "synthetic", "BOBBIN_QUIPU_TOKEN": "synthetic",
+                "BOBBIN_SERVER": "https://fixture.invalid", "BOBBIN_QUIPU_REMOTE": "fixture",
+                "GH_TOKEN": "synthetic", "UNRECOGNIZED_SECRET": "synthetic",
+                "HTTP_PROXY": "https://fixture.invalid", "PYTHONPATH": str(host),
+            }
+            probe = """import os,json,pathlib
+keys = ["QUIPU_SERVER","QUIPU_AUTH_TOKEN","BOBBIN_QUIPU_TOKEN","BOBBIN_SERVER","BOBBIN_QUIPU_REMOTE","GH_TOKEN","UNRECOGNIZED_SECRET","HTTP_PROXY","PYTHONPATH"]
+result = {"host_marker": (pathlib.Path.home()/"host-marker").exists(), "ambient_keys": [key for key in keys if key in os.environ], "home": str(pathlib.Path.home()), "xdg": {key: os.environ[key] for key in ("XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME","XDG_STATE_HOME")}}
+"""
+            fake = private / "fake-mcp"
+            fake.write_text("#!" + sys.executable + "\n" + probe + """
+import sys
+for line in sys.stdin:
+    request=json.loads(line)
+    if "id" not in request:
+        continue
+    response = {} if request["id"] == 0 else {"content":[{"type":"text","text":json.dumps(result)}]}
+    print(json.dumps({"jsonrpc":"2.0","id":request["id"],"result":response}),flush=True)
+""")
+            fake.chmod(0o700)
+            with patch.dict(os.environ, ambient):
+                direct = json.loads(builder.command([sys.executable, "-c", probe + "print(json.dumps(result))"], cwd=private))
+                (mcp,) = builder.local_mcp(fake, private / "test.db", [("fixture", {})])
+                # Explicit caller environments remain available only when requested,
+                # as required by the live-policy helper's reviewed exception.
+                explicit = json.loads(builder.command([sys.executable, "-c", probe + "print(json.dumps(result))"], cwd=private, env=dict(os.environ)))
+            self.assertTrue(explicit["host_marker"])
+            self.assertIn("GH_TOKEN", explicit["ambient_keys"])
+            for result in (direct, mcp):
+                self.assertFalse(result["host_marker"])
+                self.assertEqual(result["ambient_keys"], [])
+                home = Path(result["home"])
+                self.assertEqual(home.parent, private)
+                self.assertEqual(home.stat().st_mode & 0o777, 0o700)
+                for directory in result["xdg"].values():
+                    self.assertEqual(Path(directory).parent, home)
+                    self.assertEqual(Path(directory).stat().st_mode & 0o777, 0o700)
 
 
 if __name__ == "__main__":
