@@ -111,7 +111,7 @@ fn policy_revision_issuer_and_required_checks_are_authoritative() {
     changed.revision = "d".repeat(64);
     assert_eq!(
         evaluate(&changed, &target(), Some(&proof), 100),
-        AdmissionVerdict::Unsatisfied
+        AdmissionVerdict::StaleBinding
     );
     changed = policy.clone();
     changed.issuer_public_key = "0".repeat(64);
@@ -185,4 +185,33 @@ fn authenticated_semantic_failures_do_not_become_admissions() {
             AdmissionVerdict::Unsatisfied
         );
     }
+}
+
+#[test]
+fn stale_binding_is_distinct_and_cannot_hide_invalid_evidence() {
+    let (mut policy, mut proof) = fixture();
+    policy.revision = "d".repeat(64);
+    assert_eq!(
+        evaluate(&policy, &target(), Some(&proof), 100),
+        AdmissionVerdict::StaleBinding
+    );
+    assert_eq!(
+        evaluate(&policy, &target(), None, 100),
+        AdmissionVerdict::Missing
+    );
+    let mut wrong = target();
+    wrong.head = "ffffffffffffffffffffffffffffffffffffffff";
+    assert_eq!(
+        evaluate(&policy, &wrong, Some(&proof), 100),
+        AdmissionVerdict::Unsatisfied
+    );
+    assert_eq!(
+        evaluate(&policy, &target(), Some(&proof), 221),
+        AdmissionVerdict::Unsatisfied
+    );
+    proof.signature = "00".repeat(64);
+    assert_eq!(
+        evaluate(&policy, &target(), Some(&proof), 100),
+        AdmissionVerdict::Unsatisfied
+    );
 }

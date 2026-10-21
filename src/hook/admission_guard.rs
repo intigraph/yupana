@@ -99,6 +99,13 @@ pub(super) fn check(
             continue;
         }
         let verdict = match context.as_ref() {
+            _ if body
+                .get("landing_admission_binding_state")
+                .and_then(serde_json::Value::as_str)
+                == Some("binding-unknown") =>
+            {
+                AdmissionVerdict::Unknown
+            }
             Some(context)
                 if context.authority == authority
                     && context.repository == repository
@@ -252,4 +259,64 @@ fn gh_authority(evidence: &str) -> Option<String> {
             .bytes()
             .all(|c| c.is_ascii_alphanumeric() || b".-:".contains(&c)))
     .then_some(host)
+}
+
+#[cfg(test)]
+mod binding_state_tests {
+    use super::*;
+
+    fn observe(state: Option<&str>) -> Outcome {
+        assert!(
+            std::env::var_os("YUPANA_ACTION_KEY").is_none(),
+            "no ambient signer in this fixture"
+        );
+        let isolated = tempfile::tempdir().unwrap();
+        let mut config = YupanaConfig::default();
+        config.quipu.signing_key_path = isolated
+            .path()
+            .join("never-created.pk8")
+            .to_string_lossy()
+            .into_owned();
+        config.policy.mode = crate::policy::Mode::Enforce;
+        let mut registry = ProjectionRegistry::new("http://127.0.0.1:1");
+        registry.admission_policies = Some(vec![serde_json::from_value(serde_json::json!({
+            "id":"https://example.org/policy", "rationale":"fixture", "tier":"warn", "effect":"warn",
+            "verification_point":"PAG", "match_type":"must-match",
+            "selector":{"repositories":[{"authority":"github.com","repository":"example/project","protected_refs":["main"]}]},
+            "predicate":{"revision":"c".repeat(64),"issuer_public_key":"f".repeat(64),"max_age_secs":120,"required_checks":["current-admission"]}
+        })).unwrap()]);
+        let mut payload = serde_json::json!({"session_id":"binding-fixture", "landing_admission_context": {
+            "authority":"github.com","repository":"example/project","pr":42,"head":"a".repeat(40),"base":"b".repeat(40),"base_ref":"main"
+        }});
+        if let Some(state) = state {
+            payload["landing_admission_binding_state"] = state.into();
+        }
+        let landing =
+            crate::landing::resolve("gh pr merge 42 --repo github.com/example/project").unwrap();
+        check(
+            &config,
+            &registry,
+            &payload.to_string(),
+            &landing,
+            Path::new("."),
+        )
+    }
+
+    #[test]
+    fn binding_unknown_is_not_missing_and_warn_never_blocks() {
+        match observe(Some("binding-unknown")) {
+            Outcome::Notify(message) => assert!(message.contains("Unknown"), "{message}"),
+            _ => panic!("unknown binding must advise"),
+        }
+    }
+
+    #[test]
+    fn genuine_missing_proof_stays_missing() {
+        for state in [None, Some("current"), Some("forged-state")] {
+            match observe(state) {
+                Outcome::Notify(message) => assert!(message.contains("Missing"), "{message}"),
+                _ => panic!("missing proof must advise"),
+            }
+        }
+    }
 }
