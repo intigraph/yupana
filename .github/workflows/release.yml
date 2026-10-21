@@ -374,3 +374,22 @@ jobs:
         with:
           expected-version: ${{ steps.want.outputs.want }}
           dry-run: ${{ vars.CRATES_PUBLISH_ENABLED != 'true' }}
+
+  repository-pendant:
+    name: Verify repository pendant
+    needs: [binary, publish]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ needs.binary.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: refs/tags/${{ needs.binary.outputs.tag }}
+          fetch-depth: 0
+      - name: Verify the bounded public pointer corpus
+        run: python3 scripts/verify-repository-share.py "$RELEASE_TAG" "$(git rev-parse HEAD)"

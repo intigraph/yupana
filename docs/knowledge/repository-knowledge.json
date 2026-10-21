@@ -1,0 +1,105 @@
+{
+  "source_revision": "44f4a50f9c1df0df82bd6b98ac90245028592153",
+  "reviewed_at": "2026-10-20T23:37:10.940166Z",
+  "max_age_seconds": 2592000,
+  "records": [
+    {
+      "kind": "idea",
+      "source": "docs/book/src/concepts/promotion.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
+      "summary": "Yupana holds the volatile per-tenant structural graph; explicit promotion sends committed structural facts to Quipu as governed history.",
+      "source_sha256": "bc9a2519f8702b296e029e61cb1fade646e14024cfe94cd61a19244baa088787",
+      "type": "Concept"
+    },
+    {
+      "kind": "idea",
+      "source": "docs/vision.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fvision.md",
+      "summary": "Yupana complements semantic search with structural code intelligence; facts carry their extraction tier rather than presenting approximations as precise.",
+      "source_sha256": "33bca56f6bf870e0532e6aaa1f34259ada5c85cabb0199999b70035ab5672fab",
+      "type": "Concept"
+    },
+    {
+      "kind": "interface",
+      "source": "docs/book/src/reference/cli.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Freference%2Fcli.md",
+      "summary": "The CLI exposes analysis, callers, impact, export and promotion. Explicit configuration replaces discovery; deliberate graph writes require an explicit destination.",
+      "source_sha256": "1c72865d271e81d5737c5107b485767acc9e50518e5e66bd1f7fca3a409f67ce",
+      "properties": {
+        "interfaceKind": "CLI",
+        "publicName": "yupana analyze, callers, impact, export, promote"
+      },
+      "depends_on": [
+        "http://aegis.gastown.local/ontology/repo_quipu"
+      ]
+    },
+    {
+      "kind": "interface",
+      "source": "docs/book/src/reference/mcp-tools.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Freference%2Fmcp-tools.md",
+      "summary": "The MCP surface exposes structural queries and feature-gated promotion; served graph tools may delegate to the configured resident engine.",
+      "source_sha256": "ea79f86026b571725012a78c9a1c2d0890e9023dddd493dc18e51062820d3b41",
+      "properties": {
+        "interfaceKind": "MCP",
+        "publicName": "yupana_status, yupana_symbols, yupana_references, yupana_callers, yupana_impact"
+      }
+    },
+    {
+      "kind": "interface",
+      "source": "docs/book/src/reference/config.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Freference%2Fconfig.md",
+      "summary": "Configuration uses the yupana table in .bobbin/config.toml; read-only serving, tenant overlays and explicit promotion settings have distinct responsibilities.",
+      "source_sha256": "ae3bc01d71780c76abebc2d25aecfde2b87721a679515f62ba07603c9863e4fe",
+      "properties": {
+        "interfaceKind": "file-format",
+        "publicName": "TOML yupana configuration"
+      }
+    },
+    {
+      "kind": "decision",
+      "source": "docs/book/src/concepts/promotion.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
+      "summary": "Configured read access does not authorize CLI promotion: an explicit destination is required; uncommitted churn is not promoted as settled history.",
+      "source_sha256": "bc9a2519f8702b296e029e61cb1fade646e14024cfe94cd61a19244baa088787",
+      "type": "DecisionRecord",
+      "properties": {
+        "status": "active",
+        "supersessionStatus": "not-recorded-in-source"
+      },
+      "see_also": [
+        "https://scbrown.github.io/quechua/ns#Decision"
+      ]
+    },
+    {
+      "kind": "start-here",
+      "source": "docs/vision.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fvision.md",
+      "summary": "Start with the structural-analysis goals and the separation from semantic search and governed history.",
+      "source_sha256": "33bca56f6bf870e0532e6aaa1f34259ada5c85cabb0199999b70035ab5672fab",
+      "properties": {
+        "startHereOrder": 1,
+        "glossaryTerm": "https://scbrown.github.io/quechua/ns#Decision"
+      }
+    },
+    {
+      "kind": "start-here",
+      "source": "docs/book/src/reference/cli.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Freference%2Fcli.md",
+      "summary": "Read the CLI command and configuration precedence contract before running analysis or promotion.",
+      "source_sha256": "1c72865d271e81d5737c5107b485767acc9e50518e5e66bd1f7fca3a409f67ce",
+      "properties": {
+        "startHereOrder": 2
+      }
+    },
+    {
+      "kind": "start-here",
+      "source": "docs/book/src/concepts/promotion.md",
+      "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
+      "summary": "Read promotion identity, explicit-write authorization and provenance limitations before sharing structural facts.",
+      "source_sha256": "bc9a2519f8702b296e029e61cb1fade646e14024cfe94cd61a19244baa088787",
+      "properties": {
+        "startHereOrder": 3
+      }
+    }
+  ]
+}
