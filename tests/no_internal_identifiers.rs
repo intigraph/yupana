@@ -224,6 +224,19 @@ fn the_ontology_namespace_allowance_is_still_needed_and_still_bounded() {
     }
 
     let expected: BTreeSet<String> = [
+        // The copied repository pendant exchanges indexed pointer identities,
+        // curated knowledge, and validation/query predicates in this existing
+        // namespace. Pin these exact carriers; this is not an identifier scrub
+        // exemption and does not authorize a namespace migration.
+        "docs/knowledge/repository-knowledge.json",
+        "docs/knowledge/repository-knowledge.shapes.ttl",
+        "docs/knowledge/stored-queries.json",
+        "queries/repository-share-yupana.rq",
+        "scripts/build-repository-knowledge.py",
+        "scripts/build-repository-share.py",
+        "scripts/publish_repository_share.py",
+        "scripts/test-repository-share-publication.py",
+        "scripts/test-repository-share-query.py",
         "docs/book/src/concepts/promotion.md",
         "docs/yupana-spec.md",
         "scripts/delegate-boundary-guard.py",
