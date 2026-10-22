@@ -36,6 +36,37 @@ use super::promote_payload::{dump_payload_to, payload_slug};
 
 const SHAPES: &str = CODE_EDGE_SHAPES;
 
+#[test]
+fn nonowner_projection_validates_without_owner_heading_but_keeps_owned_guards() {
+    let ttl = r#"
+@prefix bobbin: <http://aegis.gastown.local/ontology/> .
+<urn:module> a bobbin:CodeModule; bobbin:filePath "src/lib.rs";
+ bobbin:repo "fixture"; bobbin:language "rust".
+<urn:document> a bobbin:Document; bobbin:filePath "docs/guide.md".
+<urn:section> a bobbin:Section; bobbin:headingDepth 2;
+ bobbin:inDocument <urn:document>.
+"#;
+    assert!(validate(ttl, SHAPES).unwrap().conforms);
+    assert!(matches!(
+        prepare(ttl, "fixture:projection").unwrap(),
+        Prepared::Ready(_)
+    ));
+    for invalid in [
+        ttl.replace("bobbin:headingDepth 2", "bobbin:headingDepth \"bad\""),
+        ttl.replace("bobbin:headingDepth 2;", ""),
+        ttl.replace("bobbin:filePath \"src/lib.rs\"", "bobbin:filePath 42"),
+        format!("{ttl}\n<urn:module> bobbin:language \"python\" ."),
+        format!("{ttl}\n<urn:section> bobbin:heading 42 ."),
+        format!("{ttl}\n<urn:section> bobbin:heading \"one\", \"two\" ."),
+    ] {
+        assert!(!validate(&invalid, SHAPES).unwrap().conforms, "{invalid}");
+        assert!(matches!(
+            prepare(&invalid, "fixture:projection").unwrap(),
+            Prepared::Refused(_)
+        ));
+    }
+}
+
 // The round-trip that pins the exporter to the shapes (#13/#14): a REAL
 // `export::to_turtle` projection of a real repo must SHACL-validate against
 // the shipped shapes. The hand-written CONFORMING fixture only claims to
