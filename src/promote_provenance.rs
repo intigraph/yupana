@@ -80,6 +80,14 @@ pub fn commit_turtle(root: &Path, repo: &str, commit: &str, projection: &str) ->
         esc(&author),
         esc(&date),
     ));
+    // GitCommit is also governed by the Commit metadata contract. Preserve
+    // the provenance predicates and emit their required counterparts from the
+    // same resolved values; never derive a hash from the display label.
+    out.push_str(&format!(
+        "<{iri}> bobbin:sha \"{}\" ; bobbin:in_repo \"{}\" .\n",
+        esc(&sha),
+        esc(repo),
+    ));
     out.push_str(&format!(
         "<{iri}> bobbin:committer \"{}\" .\n",
         esc(&committer)

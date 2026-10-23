@@ -106,11 +106,17 @@ that commit changed (spec §9.7):
     rdfs:label "myrepo@2f1c9a4b1d0e" ;
     bobbin:hash "2f1c9a4b1d0e…" ;
     bobbin:repo "myrepo" ;
+    bobbin:sha "2f1c9a4b1d0e…" ;
+    bobbin:in_repo "myrepo" ;
     bobbin:author "Dev <dev@example.com>" ;
     bobbin:date "2026-08-25T09:14:02+00:00"^^xsd:dateTime .
 
 <…/code/myrepo/commit/2f1c…> bobbin:modifies <…/code/myrepo/src%2Fauth.rs> .
 ```
+
+The `sha` and `in_repo` fields satisfy the shared Commit metadata contract.
+They use the same resolved commit and repository as `hash` and `repo`, which
+remain available to existing readers.
 
 That is the substrate for Quipu-side, *deterministic* work-item co-occurrence —
 "what work touched this, and what else did it touch" — as a SPARQL join, not a
