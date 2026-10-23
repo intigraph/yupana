@@ -50,6 +50,8 @@ pub enum AdmissionVerdict {
     Unknown,
     /// Supplied evidence does not satisfy the selected predicate.
     Unsatisfied,
+    /// Authentic exact-target evidence names a different producer contract.
+    StaleBinding,
 }
 
 fn hex_digest(value: &str, width: usize) -> bool {
@@ -136,11 +138,6 @@ pub fn evaluate(
             != Some(target.base)
         || proof
             .scope_provenance
-            .get("policy_revision")
-            .and_then(serde_json::Value::as_str)
-            != Some(&policy.revision)
-        || proof
-            .scope_provenance
             .get("transport")
             .and_then(serde_json::Value::as_str)
             .is_none_or(str::is_empty)
@@ -161,6 +158,16 @@ pub fn evaluate(
         })
     {
         return AdmissionVerdict::Unsatisfied;
+    }
+    let revision = proof
+        .scope_provenance
+        .get("policy_revision")
+        .and_then(serde_json::Value::as_str);
+    if revision.is_none_or(|value| !hex_digest(value, 64)) {
+        return AdmissionVerdict::Unsatisfied;
+    }
+    if revision != Some(&policy.revision) {
+        return AdmissionVerdict::StaleBinding;
     }
     AdmissionVerdict::Satisfied
 }

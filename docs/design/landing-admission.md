@@ -89,3 +89,18 @@ merges by repository identity, PR and exact head, separated by execution path.
 Measure missing coverage and adjudicated false positives before the policy
 owner promotes enforcement. Source tests or signature verification alone do
 not establish that readiness.
+
+## Producer binding drift
+
+A producer must sign the contract it actually evaluated, rather than echoing
+whatever revision the projection requests. After authenticating the signature,
+exact target, freshness and checks, a different well-formed revision yields
+`StaleBinding`. This is neither `Missing` evidence nor admission, and warn mode
+still advises. Wrong keys, wrong targets and expired evidence remain unsatisfied;
+a stale revision cannot hide them. Malformed revision evidence remains invalid.
+
+A producer that cannot read its executing contract may set the hook payload's
+`landing_admission_binding_state` to `binding-unknown`. This untrusted marker
+can only report `Unknown`, never satisfy the predicate. Observations keep these
+states separate for soak accounting. Do not treat stale/unknown producer binding
+as a true missing-admission false positive, or promote block mode on that count.
