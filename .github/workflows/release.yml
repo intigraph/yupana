@@ -207,17 +207,6 @@ jobs:
           # corrector, because the red check that used to catch it is gone.
           ./scripts/verify-changelog.sh
 
-  # THE REAL CRATES LANE (aegis-pz5crt, ported from quipu's aegis-pb4rzi fix).
-  # It lives HERE, not in crates.yml, for exactly the reason the `binary` job
-  # above already explains at length: release-plz creates the release and the tag
-  # with GITHUB_TOKEN, and GitHub does not trigger workflows from GITHUB_TOKEN
-  # events. crates.yml triggers on `release: [published]`, so on a real release
-  # it never ran at all.
-  #
-  # On quipu that left crates.io six versions behind while the publish workflow
-  # showed a green run that moved nothing. Here it left the crate UNPUBLISHED —
-  # crates.io has no `yupana`, only the pre-rename `hank` at 0.4.0 from the
-  # archived repository.
   # THE CHANGELOG GATE, on the trigger that actually fires (aegis-snglaf).
   #
   # yupana had NO changelog verification of any kind, and v0.8.1 shipped missing
@@ -301,79 +290,27 @@ jobs:
           ./scripts/verify-changelog.sh --at "refs/remotes/origin/${BR}"
 
   crates:
-    name: Publish to crates.io
-    # AFTER the binary. A release whose artifact failed to build should not be
-    # announced to the registry, and a crates.io version is permanent.
-    needs: [release-plz, publish]
+    name: Dispatch trusted crates publisher
+    # workflow_dispatch runs with GITHUB_TOKEN; release/tag events do not.
+    # Only crates.yml obtains the OIDC token accepted by Trusted Publishing.
+    needs: [release-plz, binary, publish]
     if: >-
       always() &&
       startsWith(github.ref, 'refs/heads/') &&
       needs.release-plz.outputs.releases_created == 'true' &&
       needs.publish.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write
+      actions: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # THE TAG, NOT Cargo.toml. The action refuses to publish when the crate is
-      # not at the version the caller intended, and that check is only worth
-      # anything if the two numbers come from different places. Reading git refs
-      # is independent of the manifest; deriving it with `cargo metadata` would
-      # compare a number to itself.
-      - name: Resolve the released version from the tag
-        id: want
-        run: |
-          set -euo pipefail
-          git fetch --tags --quiet
-          # ANCESTRY + TREE, not points-at (aegis-snglaf, ported from quipu PR166).
-          # points-at refused v0.8.1: release-plz tags the PR's own commit, and a
-          # merge-commit merge leaves main's HEAD one above it, so nothing points at
-          # HEAD and a valid release is refused. The resolver requires the tag to be
-          # REACHABLE from HEAD and its TREE to equal HEAD's, which is strictly
-          # stronger — a commit that landed after the tag is still refused.
-          # Exit 2 means the clone is SHALLOW and no conclusion is available; that is
-          # a checkout fault, not a tag fault, and must not read as "no tag".
-          RESOLVED="$(.github/scripts/resolve-release-tag.sh .)" || {
-            rc=$?
-            [ "$rc" = 2 ] && echo "::error::shallow checkout — needs fetch-depth: 0"
-            exit "$rc"
-          }
-          TAG="${RESOLVED%%	*}"
-          echo "want=${RESOLVED##*	}" >> "$GITHUB_OUTPUT"
-          echo "tag ${TAG} -> version ${RESOLVED##*	}"
-
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
-
-      # ⛔ THE FIRST REAL PUBLISH CLAIMS THE NAME, AND THAT IS STIWI'S CALL.
-      #
-      # `yupana` does not exist on crates.io. Making this lane work does not
-      # resume a practice, it starts one — and a crates.io name cannot be
-      # released, nor a version unpublished (only yanked). The decision sits on
-      # the Desk CRATES card as a first publish under Stiwi's own token.
-      #
-      # So until the repository variable CRATES_PUBLISH_ENABLED is set to
-      # "true", this runs in DRY-RUN mode: every guard, the packaging, and the
-      # registry read all execute, and nothing is published.
-      #
-      # This is a VARIABLE rather than a comment because a merge gate that lives
-      # only in prose does not survive the merge. It is deliberately NOT a
-      # skipped job either — a skipped job is invisible, whereas the dry-run
-      # branch says in the log that it published nothing, which is the whole
-      # point of defect 2 above.
-      #
-      # AND IT IS NOT "SAFE BECAUSE TRUSTED PUBLISHING IS UNCONFIGURED". That
-      # reasoning expires silently the moment TP is configured. This gate does
-      # not consult TP, and neither do any of the refusals in the action.
-      - uses: ./.github/actions/crates-publish
-        with:
-          expected-version: ${{ steps.want.outputs.want }}
-          dry-run: ${{ vars.CRATES_PUBLISH_ENABLED != 'true' }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Dispatch crates.yml at the published tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.binary.outputs.tag }}
+          DRY_RUN: ${{ vars.CRATES_PUBLISH_ENABLED != 'true' }}
+        run: scripts/dispatch-crates.sh
 
   repository-pendant:
     name: Repository pendant admission and readback
