@@ -222,5 +222,56 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('tag: ${{ steps.tag.outputs.tag }}', native)
 
 
+class CratesDispatchTests(unittest.TestCase):
+    def test_dispatch_pins_tag_version_and_dry_run_without_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gh = root / 'gh'
+            gh.write_text('#!/usr/bin/env python3\nimport json,os,sys\n'
+                          'open(os.environ["DISPATCH_LOG"],"w").write(json.dumps(sys.argv[1:]))\n'
+                          'sys.exit(int(os.environ.get("GH_EXIT","0")))\n')
+            gh.chmod(0o755)
+            log = root / 'log'
+            env = dict(os.environ, PATH=f'{root}:{os.environ["PATH"]}',
+                       DISPATCH_LOG=str(log), RELEASE_TAG='v0.16.1')
+            for dry in ('true', 'false'):
+                result = subprocess.run(['bash', str(ROOT / 'scripts/dispatch-crates.sh')],
+                                        env=dict(env, DRY_RUN=dry), capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(log.read_text()),
+                                 ['workflow', 'run', 'crates.yml', '--ref', 'v0.16.1',
+                                  '-f', 'version=0.16.1', '-f', f'dry_run={dry}'])
+            for tag, dry in [('', 'false'), ('main', 'false'), ('v0.16.1-rc.1', 'false'),
+                             ('v0.16.1;echo bad', 'false'), ('v0.16.1', ''),
+                             ('v0.16.1', 'yes')]:
+                log.unlink(missing_ok=True)
+                result = subprocess.run(['bash', str(ROOT / 'scripts/dispatch-crates.sh')],
+                                        env=dict(env, RELEASE_TAG=tag, DRY_RUN=dry),
+                                        capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(log.exists())
+            result = subprocess.run(['bash', str(ROOT / 'scripts/dispatch-crates.sh')],
+                                    env=dict(env, DRY_RUN='false', GH_EXIT='7'),
+                                    capture_output=True)
+            self.assertEqual(result.returncode, 7)
+
+    def test_only_the_trusted_workflow_can_publish(self):
+        workflow = (ROOT / '.github/workflows/release.yml').read_text()
+        dispatch = workflow.split('  crates:\n', 1)[1].split('  repository-pendant:', 1)[0]
+        self.assertIn('needs: [release-plz, binary, publish]', dispatch)
+        self.assertIn("needs.release-plz.outputs.releases_created == 'true'", dispatch)
+        self.assertIn("needs.publish.result == 'success'", dispatch)
+        self.assertIn('actions: write', dispatch)
+        self.assertIn("vars.CRATES_PUBLISH_ENABLED != 'true'", dispatch)
+        self.assertIn('RELEASE_TAG: ${{ needs.binary.outputs.tag }}', dispatch)
+        self.assertIn('run: scripts/dispatch-crates.sh', dispatch)
+        self.assertNotIn('id-token: write', workflow)
+        self.assertNotIn('uses: ./.github/actions/crates-publish', workflow)
+        trusted = (ROOT / '.github/workflows/crates.yml').read_text()
+        self.assertIn('id-token: write', trusted)
+        self.assertIn('uses: ./.github/actions/crates-publish', trusted)
+        self.assertIn('github.event.release.prerelease == false', trusted)
+
+
 if __name__ == '__main__':
     unittest.main()

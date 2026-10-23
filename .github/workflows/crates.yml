@@ -1,20 +1,8 @@
 name: Publish to crates.io
 
-# THE MANUAL LANE ONLY. The real one lives in release.yml (aegis-pz5crt).
-#
-# `release: [published]` is kept below because it costs nothing and would work
-# for a release a HUMAN publishes — but it must not be mistaken for the lane
-# that ships our releases. release-plz creates the release with GITHUB_TOKEN,
-# and events raised by GITHUB_TOKEN never trigger workflows, so on a real
-# release this file does not run at all — the same reason the `binary` job in
-# release.yml cannot be triggered by its own tag push, which that file already
-# documents.
-#
-# On quipu this exact shape left crates.io six versions behind (aegis-pb4rzi).
-# Here it left the crate UNPUBLISHED: crates.io has no `yupana` at all.
-#
-# The publishing steps live in .github/actions/crates-publish so this file and
-# release.yml cannot drift apart. Change them there, not here.
+# The single Trusted Publishing lane. release.yml dispatches this workflow
+# at the published tag; manual dispatch remains available for recovery.
+# Version, prerelease and already-published checks live in crates-publish.
 
 on:
   release:
