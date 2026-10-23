@@ -180,10 +180,15 @@ that no longer exists."
   never writes to Quipu without passing `shapes/code-edges.ttl`, the compiled-in
   shape set. It gates the structural edges (`calls`, `references`, `imports`,
   `dataDependsOn`, `controlDependsOn`, `hasTier`) and the `Section → references`
-  edge (§5.10), and carries the node-shape constraints synced byte-for-byte
-  from Quipu's `code-entities.ttl` so a shape drift is caught at Yupana rather
-  than discovered as a Quipu refusal. A real `export` projection is
-  round-trip-validated against these shapes in the test suite, so the emitter
+  edge (§5.10), and requires the structural fields owned by Yupana. Shared
+  `CodeModule`, `Document`, and `Section` labels and Section headings come from
+  Bobbin; Yupana emits their stable IRIs, paths, depth and relationships without
+  adding a second label or heading. `CodeSymbol` labels remain Yupana-owned.
+  The local producer projection does not require the owner's heading in its
+  partial payload. Quipu still validates the composed post-state with its full
+  receiver shapes; a missing required owner fact can still refuse the write.
+  This changes neither receiver policy nor historical stored labels. A real
+  `export` projection is round-trip-validated against these shapes in the test suite, so the emitter
   cannot drift from the gate unnoticed.
 - Writes go through Quipu's existing surface (`quipu_knot` / `POST /knot` /
   `Store::transact`), honoring `valid_from`/`valid_to`, `actor`, and `source`

@@ -1,0 +1,8 @@
+Script started on 2026-10-22 00:47:42-04:00 [COMMAND="python3 run.py" <not executed on terminal>]
+$ yupana export FIXTURE --repo label-fixture --format turtle
+Real export summaries, same nested-path fixture:
+BEFORE {"binary_sha256": "4dc8daa02ccf0a7c28c23062970c024209e2aef40c2eaaa3444e89cb0110333a", "document_basename_label": true, "full_document_path": true, "module_basename_label": true, "owned_symbol_label": true, "section_heading": true, "section_leaf_label": true}
+AFTER  {"binary_sha256": "1d03dc7d01b2cec6436c3deb3c0060cddfdb0109a423d33bd8dae5a179fff3b3", "document_basename_label": false, "full_document_path": true, "module_basename_label": false, "owned_symbol_label": true, "section_heading": false, "section_leaf_label": false}
+CONTROL: all structural lines and IRIs identical; symbol label retained
+
+Script done on 2026-10-22 00:47:42-04:00 [COMMAND_EXIT_CODE="0"]

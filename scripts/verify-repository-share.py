@@ -4,6 +4,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -55,9 +56,27 @@ def verify(folder, tag, revision):
     return expected
 
 
-def wait(tag, revision, attempts=80, pause=time.sleep, run=subprocess.run):
+def publisher_admitted(value):
+    """Release-side attestation; this does not enable the trusted producer."""
+    if value in (None, "", "false"):
+        return False
+    if value == "true":
+        return True
+    raise ValueError("publisher admission must be true, false or unset")
+
+
+def wait(tag, revision, attempts=80, pause=time.sleep, run=subprocess.run, *, admitted=False):
     if not re.fullmatch(r"v\d+\.\d+\.\d+(?:[.-][A-Za-z0-9.-]+)?", tag) or not re.fullmatch("[0-9a-f]{40}", revision):
         raise ValueError("invalid release identity before lookup")
+    if type(admitted) is not bool:
+        raise ValueError("publisher admission must be a boolean")
+    if not admitted:
+        return {
+            "status": "NOT_ADMITTED",
+            "source_repository": "scbrown/yupana",
+            "release_tag": tag,
+            "source_revision": revision,
+        }
     stem = "yupana-" + tag + "-repository.pendant.tar.gz"
     last_read = "not attempted"
     for number in range(attempts):
@@ -87,7 +106,7 @@ def wait(tag, revision, attempts=80, pause=time.sleep, run=subprocess.run):
                 )
                 last_read = "exit=" + str(result.returncode)
                 if result.returncode == 0:
-                    return verify(folder, tag, revision)
+                    return {"status": "VERIFIED", **verify(folder, tag, revision)}
             except subprocess.TimeoutExpired:
                 last_read = "read timeout"
         if number + 1 < attempts:
@@ -95,7 +114,20 @@ def wait(tag, revision, attempts=80, pause=time.sleep, run=subprocess.run):
     raise ValueError("repository pendant unverified after bounded trusted-producer wait; " + last_read)
 
 
+def main(args):
+    admitted = publisher_admitted(os.environ.get("TRUSTED_REPOSITORY_SHARE_ENABLED"))
+    if args == ["--admission"]:
+        if output := os.environ.get("GITHUB_OUTPUT"):
+            with Path(output).open("a") as handle:
+                handle.write("admitted=" + str(admitted).lower() + "\n")
+        return {
+            "status": "ADMITTED" if admitted else "NOT_ADMITTED",
+            "source_repository": "scbrown/yupana",
+        }
+    if len(args) != 2:
+        raise SystemExit("usage: verify-repository-share.py --admission | <release-tag> <exact-release-sha>")
+    return wait(args[0], args[1], admitted=admitted)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: verify-repository-share.py <release-tag> <exact-release-sha>")
-    print(json.dumps(wait(sys.argv[1], sys.argv[2])))
+    print(json.dumps(main(sys.argv[1:])))

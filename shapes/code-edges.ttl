@@ -195,9 +195,11 @@ bobbin:SectionReferencesShape a sh:NodeShape ;
 # REFUSES promotions that violate it (first live case: a symbol IRI collision
 # put two symbolKind values on one node; quipu refused, yupana's in-process pass
 # had accepted — the first live rudof<->quipu shape drift). yupana must refuse
-# BEFORE the network, so the node constraints ride in the same compiled set the
-# promoter validates against. Keep byte-parity of the CONSTRAINTS with quipu's
-# copy; an automated yupana<->quipu shapes-agreement test is the planned follow-up.
+# BEFORE the network, so owned node constraints ride in the same compiled set.
+# This is a producer projection: shared labels and Section headings belong to
+# the other producer. Their presence is checked in the receiver's composed
+# graph, not required in this partial payload. The receiver's shapes and its
+# post-state validation are unchanged. Yupana-owned fields remain required.
 
 bobbin:CodeModuleShape a sh:NodeShape ;
     sh:targetClass bobbin:CodeModule ;
@@ -225,5 +227,5 @@ bobbin:DocumentShape a sh:NodeShape ;
 
 bobbin:SectionShape a sh:NodeShape ;
     sh:targetClass bobbin:Section ;
-    sh:property [ sh:path bobbin:heading ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path bobbin:heading ; sh:datatype xsd:string ; sh:maxCount 1 ] ;
     sh:property [ sh:path bobbin:headingDepth ; sh:datatype xsd:integer ; sh:minCount 1 ; sh:maxCount 1 ] .

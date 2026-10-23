@@ -1,6 +1,6 @@
 {
-  "source_revision": "44f4a50f9c1df0df82bd6b98ac90245028592153",
-  "reviewed_at": "2026-10-20T23:37:10.940166Z",
+  "source_revision": "690107d188fb80eb27d0408acef9f9bad727a529",
+  "reviewed_at": "2026-10-22T04:59:17.537797Z",
   "max_age_seconds": 2592000,
   "records": [
     {
@@ -8,7 +8,7 @@
       "source": "docs/book/src/concepts/promotion.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
       "summary": "Yupana holds the volatile per-tenant structural graph; explicit promotion sends committed structural facts to Quipu as governed history.",
-      "source_sha256": "bc9a2519f8702b296e029e61cb1fade646e14024cfe94cd61a19244baa088787",
+      "source_sha256": "e1c80293e689d48a6954b228f33003d24c051e826ee3fef9419f32e6b5dbded8",
       "type": "Concept"
     },
     {
@@ -60,7 +60,7 @@
       "source": "docs/book/src/concepts/promotion.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
       "summary": "Configured read access does not authorize CLI promotion: an explicit destination is required; uncommitted churn is not promoted as settled history.",
-      "source_sha256": "bc9a2519f8702b296e029e61cb1fade646e14024cfe94cd61a19244baa088787",
+      "source_sha256": "e1c80293e689d48a6954b228f33003d24c051e826ee3fef9419f32e6b5dbded8",
       "type": "DecisionRecord",
       "properties": {
         "status": "active",
@@ -96,7 +96,7 @@
       "source": "docs/book/src/concepts/promotion.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
       "summary": "Read promotion identity, explicit-write authorization and provenance limitations before sharing structural facts.",
-      "source_sha256": "bc9a2519f8702b296e029e61cb1fade646e14024cfe94cd61a19244baa088787",
+      "source_sha256": "e1c80293e689d48a6954b228f33003d24c051e826ee3fef9419f32e6b5dbded8",
       "properties": {
         "startHereOrder": 3
       }
