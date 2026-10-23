@@ -376,7 +376,7 @@ jobs:
           dry-run: ${{ vars.CRATES_PUBLISH_ENABLED != 'true' }}
 
   repository-pendant:
-    name: Verify repository pendant
+    name: Repository pendant admission and readback
     needs: [binary, publish]
     if: always() && needs.publish.result == 'success'
     runs-on: ubuntu-latest
@@ -386,10 +386,15 @@ jobs:
     env:
       RELEASE_TAG: ${{ needs.binary.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
+      TRUSTED_REPOSITORY_SHARE_ENABLED: ${{ vars.TRUSTED_REPOSITORY_SHARE_ENABLED }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: refs/tags/${{ needs.binary.outputs.tag }}
           fetch-depth: 0
+      - name: Report trusted publisher admission
+        id: publisher
+        run: python3 scripts/verify-repository-share.py --admission
       - name: Verify the bounded public pointer corpus
+        if: steps.publisher.outputs.admitted == 'true'
         run: python3 scripts/verify-repository-share.py "$RELEASE_TAG" "$(git rev-parse HEAD)"
