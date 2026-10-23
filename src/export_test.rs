@@ -119,7 +119,7 @@ fn emits_doc_references_to_known_symbols() {
     assert!(ttl.contains("a bobbin:Document"), "got:\n{ttl}");
     assert!(ttl.contains("bobbin:filePath \"guide.md\""));
     assert!(ttl.contains("a bobbin:Section"));
-    assert!(ttl.contains("bobbin:heading \"Traversal\""));
+    assert!(!ttl.contains("bobbin:heading \"Traversal\""));
     assert!(ttl.contains("bobbin:headingDepth 1"));
 
     // The references edge points a Section IRI at a real CodeSymbol IRI.
@@ -468,19 +468,10 @@ fn same_kind_duplicates_collapse_without_a_note() {
     );
 }
 
-/// EVERY entity this exporter emits carries rdfs:label (aegis-lsv6t).
-///
-/// Regression, not a nicety: this exporter is the sole producer of the live code
-/// plane and emitted no labels at all, so 11,928 of 12,438 nodes were
-/// unreachable from `?s rdfs:label ?l` — the query a person runs to find a thing
-/// by NAME. Nothing caught it, because the shapes for these classes require the
-/// domain predicates (bobbin:heading, bobbin:name, bobbin:filePath) and SHACL
-/// only refuses what a shape requires. So the test asserts the label per class
-/// and, in the same breath, that the count of typed entities and the count of
-/// labels AGREE — a per-class assertion alone passes the moment a fifth class is
-/// added without one, which is exactly how this happened.
+/// Shared classes keep their structural facts without adding non-owner labels
+/// or headings; owned symbols still carry their labels.
 #[test]
-fn every_emitted_entity_carries_an_rdfs_label() {
+fn nonowner_projection_labels_only_owned_symbols() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
         dir.path().join("graph.rs"),
@@ -499,29 +490,24 @@ fn every_emitted_entity_carries_an_rdfs_label() {
         ttl.contains("@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> ."),
         "rdfs: must be bound or every label below is unparseable:\n{ttl}"
     );
-    // The label VALUES are the sibling emitter's (quipu scripts/ingest-repos.py):
-    // heading for a Section, symbol name for a CodeSymbol, file basename — not
-    // the full path, which stays on bobbin:filePath — for a Document/CodeModule.
-    assert!(
-        ttl.contains("a bobbin:CodeModule ;\n    rdfs:label \"graph.rs\""),
-        "got:\n{ttl}"
-    );
+    // Shared classes keep their identities and structure, without asserting
+    // another producer's presentation fields.
+    for class in ["CodeModule", "Document", "Section"] {
+        assert!(ttl.contains(&format!("a bobbin:{class} ;")));
+        assert!(!ttl.contains(&format!("a bobbin:{class} ;\n    rdfs:label")));
+    }
     assert!(
         ttl.contains("a bobbin:CodeSymbol ;\n    rdfs:label \"reachable\""),
         "got:\n{ttl}"
     );
-    assert!(
-        ttl.contains("a bobbin:Document ;\n    rdfs:label \"guide.md\""),
-        "got:\n{ttl}"
-    );
-    assert!(
-        ttl.contains("a bobbin:Section ;\n    rdfs:label \"Traversal\""),
-        "got:\n{ttl}"
-    );
+    assert!(!ttl.contains("bobbin:heading "));
+    assert!(ttl.contains("bobbin:headingDepth 1"));
+    assert!(ttl.contains("bobbin:inDocument"));
+    assert!(ttl.contains("bobbin:filePath \"guide.md\""));
+    assert!(ttl.contains("bobbin:references"));
 
-    // No entity type may be added without one. `a bobbin:` appears once per
-    // entity and never on an edge line, so these two counts are the whole claim.
-    let entities = ttl.matches(" a bobbin:").count();
+    // Every label in this projection belongs to one of its CodeSymbols.
+    let entities = ttl.matches(" a bobbin:CodeSymbol ;").count();
     let labels = ttl.matches("rdfs:label ").count();
     assert_eq!(
         entities, labels,

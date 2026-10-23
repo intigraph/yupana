@@ -16,8 +16,9 @@
 //! WHY IN-PROCESS VALIDATION, NOT QUIPU'S. Quipu exposes `/validate`, and it works.
 //! But validating against the same server you are about to write to proves only
 //! that the server agrees with itself. FR-20 wants yupana to hold its own copy of the
-//! shapes and check independently, so a shape drift between yupana and Quipu is caught
-//! at yupana rather than discovered as bad data already in the graph. rudof_lib is
+//! producer-projection shapes and check independently. Shared owner labels and
+//! headings are checked in the receiver's composed graph; owned structural
+//! fields remain required here. rudof_lib is
 //! that independent checker; `tests/shape_agreement.rs` is the cross-check that
 //! the two engines still agree.
 //!
