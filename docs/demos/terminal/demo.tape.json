@@ -1,0 +1,12 @@
+{
+  "title": "Yupana | know the blast radius before you edit",
+  "width": 1000,
+  "height": 620,
+  "font_size": 24,
+  "line_height": 32,
+  "steps": [
+    {"args": ["analyze", "src"], "hold": 3},
+    {"args": ["callers", "parse", "src"], "hold": 4},
+    {"args": ["impact", "parse", "src", "--hops", "2"], "hold": 7}
+  ]
+}
