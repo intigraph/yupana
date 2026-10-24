@@ -80,6 +80,14 @@ pub fn commit_turtle(root: &Path, repo: &str, commit: &str, projection: &str) ->
         esc(&author),
         esc(&date),
     ));
+    // Emit the shared Commit metadata names alongside the provenance names.
+    // Both pairs use the same resolved values; never derive a hash from the
+    // display label or change the commit identity to satisfy the contract.
+    out.push_str(&format!(
+        "<{iri}> bobbin:sha \"{}\" ; bobbin:in_repo \"{}\" .\n",
+        esc(&sha),
+        esc(repo),
+    ));
     out.push_str(&format!(
         "<{iri}> bobbin:committer \"{}\" .\n",
         esc(&committer)
