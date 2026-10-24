@@ -1,0 +1,6 @@
+[yupana]
+enable_lsp = false
+enable_cpg = false
+
+[yupana.quipu]
+enabled = false

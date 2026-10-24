@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+<title id="title">Yupana | know the blast radius before you edit</title>
+<desc id="desc">Real local commands show load calling parse, and run affected at hop two. The animation repeats. The adjacent transcript provides a static alternative.</desc>
+<rect width="100%" height="100%" rx="16" fill="#101827"/>
+<path d="M0 54H1000" stroke="#334155"/>
+<circle cx="28" cy="27" r="7" fill="#fb7185"/>
+<circle cx="52" cy="27" r="7" fill="#fbbf24"/>
+<circle cx="76" cy="27" r="7" fill="#34d399"/>
+<text x="110" y="34" fill="#e2e8f0" font-family="monospace" font-size="20">Yupana | know the blast radius before you edit</text>
+<g id="frame0" visibility="hidden" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="visible;hidden;hidden" keyTimes="0.000000;0.081429;1.000000" dur="18.513s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ yupana analyze src</text>
+</g>
+<g id="frame1" visibility="hidden" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="hidden;visible;hidden;hidden" keyTimes="0.000000;0.081429;0.243483;1.000000" dur="18.513s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ yupana analyze src</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">analyzed 1 file(s), 3 symbol(s) [tree-sitter]</text>
+</g>
+<g id="frame2" visibility="hidden" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="hidden;visible;hidden;hidden" keyTimes="0.000000;0.243483;0.324648;1.000000" dur="18.513s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ yupana analyze src</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">analyzed 1 file(s), 3 symbol(s) [tree-sitter]</text>
+<text x="28" y="158" fill="#f1f5f9" xml:space="preserve"></text>
+<text x="28" y="190" fill="#6ee7b7" xml:space="preserve">$ yupana callers parse src</text>
+</g>
+<g id="frame3" visibility="hidden" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="hidden;visible;hidden;hidden" keyTimes="0.000000;0.324648;0.540717;1.000000" dur="18.513s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ yupana analyze src</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">analyzed 1 file(s), 3 symbol(s) [tree-sitter]</text>
+<text x="28" y="158" fill="#f1f5f9" xml:space="preserve"></text>
+<text x="28" y="190" fill="#6ee7b7" xml:space="preserve">$ yupana callers parse src</text>
+<text x="28" y="222" fill="#f1f5f9" xml:space="preserve">callers of parse:</text>
+<text x="28" y="254" fill="#f1f5f9" xml:space="preserve">  lib.rs:5 load</text>
+<text x="28" y="286" fill="#f1f5f9" xml:space="preserve">callees of parse: (none)</text>
+</g>
+<g id="frame4" visibility="hidden" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="hidden;visible;hidden;hidden" keyTimes="0.000000;0.540717;0.621886;1.000000" dur="18.513s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ yupana analyze src</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">analyzed 1 file(s), 3 symbol(s) [tree-sitter]</text>
+<text x="28" y="158" fill="#f1f5f9" xml:space="preserve"></text>
+<text x="28" y="190" fill="#6ee7b7" xml:space="preserve">$ yupana callers parse src</text>
+<text x="28" y="222" fill="#f1f5f9" xml:space="preserve">callers of parse:</text>
+<text x="28" y="254" fill="#f1f5f9" xml:space="preserve">  lib.rs:5 load</text>
+<text x="28" y="286" fill="#f1f5f9" xml:space="preserve">callees of parse: (none)</text>
+<text x="28" y="318" fill="#f1f5f9" xml:space="preserve"></text>
+<text x="28" y="350" fill="#6ee7b7" xml:space="preserve">$ yupana impact parse src --hops 2</text>
+</g>
+<g id="frame5" visibility="visible" font-family="DejaVu Sans Mono, Menlo, monospace" font-size="24">
+<animate attributeName="visibility" calcMode="discrete" values="hidden;visible;visible" keyTimes="0.000000;0.621886;1.000000" dur="18.513s" repeatCount="indefinite"/>
+<text x="28" y="94" fill="#6ee7b7" xml:space="preserve">$ yupana analyze src</text>
+<text x="28" y="126" fill="#f1f5f9" xml:space="preserve">analyzed 1 file(s), 3 symbol(s) [tree-sitter]</text>
+<text x="28" y="158" fill="#f1f5f9" xml:space="preserve"></text>
+<text x="28" y="190" fill="#6ee7b7" xml:space="preserve">$ yupana callers parse src</text>
+<text x="28" y="222" fill="#f1f5f9" xml:space="preserve">callers of parse:</text>
+<text x="28" y="254" fill="#f1f5f9" xml:space="preserve">  lib.rs:5 load</text>
+<text x="28" y="286" fill="#f1f5f9" xml:space="preserve">callees of parse: (none)</text>
+<text x="28" y="318" fill="#f1f5f9" xml:space="preserve"></text>
+<text x="28" y="350" fill="#6ee7b7" xml:space="preserve">$ yupana impact parse src --hops 2</text>
+<text x="28" y="382" fill="#f1f5f9" xml:space="preserve">impact 2 symbol(s) affected by changing parse:</text>
+<text x="28" y="414" fill="#f1f5f9" xml:space="preserve">  lib.rs:5 load (hop 1)</text>
+<text x="28" y="446" fill="#f1f5f9" xml:space="preserve">  lib.rs:9 run (hop 2)</text>
+</g>
+</svg>
