@@ -1,0 +1,50 @@
+{
+  "version": "yupana 0.15.4",
+  "binary_sha256": "e5eb6049fe70d4ca0209948b8ddae8721790d30dec930a9d55784a8c9a05061c",
+  "duration_seconds": 18.513,
+  "frames_checked": 6,
+  "inputs_sha256": {
+    "render.py": "1908c32c122a35775cf23ec658a01a762c6baf5d7d188ad0753e823e2bf45673",
+    "demo.tape.json": "36aeb5c7f60ecd79b1ef286a76ecb3dc2367b5598bf4edc22af6ca32e3f2a1b7",
+    "fixture/src/lib.rs": "4c19266446bc842a2397e179407beea99d127c566664a44db953ad8559914620",
+    "fixture/.bobbin/config.toml": "524aad4fa8d17457c8d94a3838e45ac9ee85775969f94419a495f62745eb776f"
+  },
+  "commands": [
+    {
+      "args": [
+        "analyze",
+        "src"
+      ],
+      "exit": 0,
+      "seconds": 0.007367,
+      "stdout": "analyzed 1 file(s), 3 symbol(s) [tree-sitter]\n"
+    },
+    {
+      "args": [
+        "callers",
+        "parse",
+        "src"
+      ],
+      "exit": 0,
+      "seconds": 0.002518,
+      "stdout": "callers of parse:\n  lib.rs:5 load\ncallees of parse: (none)\n"
+    },
+    {
+      "args": [
+        "impact",
+        "parse",
+        "src",
+        "--hops",
+        "2"
+      ],
+      "exit": 0,
+      "seconds": 0.002578,
+      "stdout": "impact 2 symbol(s) affected by changing parse:\n  lib.rs:5 load (hop 1)\n  lib.rs:9 run (hop 2)\n"
+    }
+  ],
+  "sha256": {
+    "demo.svg": "27c739fb9cba6c72b85ce308244145e936291c60f14d1c9e4746c156a442bbae",
+    "demo.cast": "11db5d0004e4c9697548f258742b48d1642e25731e403d9af31e734b106b0679",
+    "transcript.txt": "86d057bd8ffd3203481905c844e5851cfb08fd52c25ee50b3282717d90c6d954"
+  }
+}

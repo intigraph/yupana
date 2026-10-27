@@ -144,6 +144,11 @@ session-guard *args="--selftest":
 test-changelog:
     python3 scripts/test_changelog_scrub.py
 
+# Verify the standalone installer using private release fixtures.
+installer-check:
+    sh -n install.sh
+    python3 scripts/test-install-release.py
+
 # Copied repository-pendant source and publication refusal controls (rdflib 7.6.0).
 repository-pendant-tests:
     python3 scripts/test-repository-knowledge.py

@@ -125,7 +125,7 @@ repos:
         name: draft release publication ordering
         entry: python3 tests/release_publication.py
         language: system
-        files: ^(scripts/publish-release-assets\.sh|tests/release_publication\.py|\.github/workflows/release.*\.yml|release-plz\.toml|justfile)$
+        files: ^(scripts/(publish-release-assets|dispatch-crates)\.sh|tests/release_publication\.py|\.github/workflows/(release.*|crates)\.yml|release-plz\.toml|justfile)$
         pass_filenames: false
         verbose: true
 

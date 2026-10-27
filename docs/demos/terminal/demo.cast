@@ -1,0 +1,7 @@
+{"version": 2, "width": 65, "height": 16, "title": "Yupana | know the blast radius before you edit", "env": {"TERM": "dumb"}}
+[0, "o", "$ yupana analyze src\r\n"]
+[1.5074957548640668, "o", "analyzed 1 file(s), 3 symbol(s) [tree-sitter]\r\n"]
+[4.507629682077095, "o", "\r\n$ yupana callers parse src\r\n"]
+[6.010244698030874, "o", "callers of parse:\r\n  lib.rs:5 load\r\ncallees of parse: (none)\r\n"]
+[10.010358171071857, "o", "\r\n$ yupana impact parse src --hops 2\r\n"]
+[11.513032601913437, "o", "impact 2 symbol(s) affected by changing parse:\r\n  lib.rs:5 load (hop 1)\r\n  lib.rs:9 run (hop 2)\r\n"]

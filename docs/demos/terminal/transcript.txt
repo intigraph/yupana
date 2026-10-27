@@ -1,0 +1,12 @@
+$ yupana analyze src
+analyzed 1 file(s), 3 symbol(s) [tree-sitter]
+
+$ yupana callers parse src
+callers of parse:
+  lib.rs:5 load
+callees of parse: (none)
+
+$ yupana impact parse src --hops 2
+impact 2 symbol(s) affected by changing parse:
+  lib.rs:5 load (hop 1)
+  lib.rs:9 run (hop 2)
