@@ -128,6 +128,8 @@ fn the_commit_node_carries_hash_repo_author_and_a_typed_date() {
     let proj = projection(&dir, &head);
     let ttl = commit_turtle(dir.path(), "realname", &head, &proj).unwrap();
     assert!(ttl.contains(&format!("bobbin:hash \"{head}\"")), "{ttl}");
+    assert!(ttl.contains(&format!("bobbin:sha \"{head}\"")), "{ttl}");
+    assert!(ttl.contains("bobbin:in_repo \"realname\""), "{ttl}");
     assert!(ttl.contains("bobbin:repo \"realname\""), "{ttl}");
     assert!(
         ttl.contains("bobbin:author \"Dev <dev@example.com>\""),
