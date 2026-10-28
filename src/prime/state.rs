@@ -109,7 +109,7 @@ fn read(root: &Path, override_path: Option<&Path>) -> Value {
     };
     let mut summary = json!({"root":root,"configs":paths,"configuration_source":if found {"files"} else {"compiled_defaults"},
         "base_ref":config.base_ref,"base_ref_source":"configuration","tiers":crate::types::Tier::served(),
-        "configured_tiers":{"lsp":config.enable_lsp,"cpg":config.enable_cpg},"local_rules":config.policy.rules.len()});
+        "local_rules":config.policy.rules.len()});
     let mut status = if found { "ok" } else { "absent" };
     #[cfg(feature = "quipu")]
     {

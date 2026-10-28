@@ -56,8 +56,8 @@ read has a 650 ms deadline. It does not build a graph, refresh projections,
 contact a server, write caches, generate signing keys or emit a usage spool.
 
 The base ref is configured, not a measurement of a resident graph's loaded
-commit. Compiled tiers come from the same source as status; LSP/CPG configuration
-is shown separately. Local rules are configuration entries. Governed counts
+commit. Compiled tiers come from the same source as status; phased LSP/CPG configuration
+is not reported as served capability. Local rules are configuration entries. Governed counts
 cover cached structural and text entries, with cache age, endpoint match and
 expiry status; they never claim a fresh live query or current enforcement.
 Other policy planes are not included in that count. Missing, unreadable or
