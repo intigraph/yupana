@@ -313,3 +313,32 @@ fn malformed_real_hook_remains_fail_open() {
         .unwrap()
         .contains("policy guard failed open"));
 }
+
+#[test]
+fn hook_arguments_and_global_values_do_not_change_the_prime_exit_code() {
+    let dir = fixture();
+    let before = snapshot(dir.path());
+    for args in [
+        vec!["prime", "--section", "hook"],
+        vec!["--json", "prime", "--section", "hook"],
+        vec!["--config", "hook", "prime", "--section", "hook"],
+        vec!["--tenant", "hook", "prime", "--section", "hook"],
+        vec!["--config=hook", "prime", "--section", "hook"],
+    ] {
+        let out = command(dir.path()).args(&args).output().unwrap();
+        assert_eq!(out.status.code(), Some(2), "{args:?}");
+        assert!(!String::from_utf8_lossy(&out.stderr).contains("policy guard failed open"));
+    }
+    for args in [
+        vec!["hook", "not-a-real-event"],
+        vec!["--json", "hook", "not-a-real-event"],
+        vec!["--config", "hook", "hook", "not-a-real-event"],
+        vec!["--tenant", "hook", "hook", "not-a-real-event"],
+    ] {
+        let out = command(dir.path()).args(&args).output().unwrap();
+        assert_eq!(out.status.code(), Some(0), "{args:?}");
+        assert!(out.stdout.is_empty());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("policy guard failed open"));
+    }
+    assert_eq!(before, snapshot(dir.path()));
+}
