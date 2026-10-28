@@ -309,6 +309,72 @@ a release, run
 <h2 id="install-the-git-hooks"><a class="header" href="#install-the-git-hooks">Install the git hooks</a></h2>
 <pre><code class="language-bash">just setup            # installs pre-commit hooks
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="yupana-agent-primer"><a class="header" href="#yupana-agent-primer">Yupana agent primer</a></h1>
+<h2 id="what-yupana-is"><a class="header" href="#what-yupana-is">What yupana is</a></h2>
+<p>Yupana explains code structure: symbols, callers, impact and data dependence.
+Bobbin searches code by meaning; Quipu remembers governed knowledge.
+Yupana supplies the structural signal that complements those two tools.
+Facts carry their actual extraction tier; configured tiers are not measured precision.</p>
+<h2 id="agent-workflow"><a class="header" href="#agent-workflow">Agent workflow</a></h2>
+<ol>
+<li>Query Quipu for prior decisions, constraints and provenance before acting.</li>
+<li>Use Bobbin to find code, then Yupana for callers and impact before structural edits.</li>
+<li>Start impact at one hop and disambiguate repeated symbol names by location.</li>
+<li>Inspect tiers and freshness; unknown coverage is not proof of no impact.</li>
+<li>Validate proposed edits with verification and ordinary repository checks.</li>
+</ol>
+<h2 id="core-commands"><a class="header" href="#core-commands">Core commands</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Command</th><th>Use</th></tr></thead><tbody>
+<tr><td><code>yupana prime</code></td><td>Read-only orientation and bounded local state</td></tr>
+<tr><td><code>yupana prime --brief</code></td><td>Short orientation for stack aggregation</td></tr>
+<tr><td><code>yupana prime --json</code></td><td>Structured <code>stack-prime/1</code> output</td></tr>
+<tr><td><code>yupana prime --static</code></td><td>Embedded guidance without config or cache reads</td></tr>
+<tr><td><code>yupana prime --section core --static</code></td><td>One section by heading prefix</td></tr>
+<tr><td><code>yupana analyze PATH</code></td><td>Build a structural summary</td></tr>
+<tr><td><code>yupana refs SYMBOL PATH</code></td><td>Find definitions and references</td></tr>
+<tr><td><code>yupana callers SYMBOL PATH</code></td><td>Direct callers</td></tr>
+<tr><td><code>yupana impact SYMBOL PATH --hops 1</code></td><td>Direct structural impact</td></tr>
+<tr><td><code>yupana dataflow FUNCTION PATH</code></td><td>Data dependence for a function</td></tr>
+<tr><td><code>yupana verify --file FILE --buffer BUFFER</code></td><td>Check a proposed buffer file</td></tr>
+<tr><td><code>yupana status</code></td><td>Detailed state; may query the governed projection</td></tr>
+<tr><td><code>yupana serve --read-only</code></td><td>Serve code query MCP tools with the mcp feature</td></tr>
+</tbody></table>
+</div>
+<h2 id="mcp-tools"><a class="header" href="#mcp-tools">MCP tools</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Tool</th><th>Use</th></tr></thead><tbody>
+<tr><td><code>yupana_status</code></td><td>Base ref, tiers and policy state</td></tr>
+<tr><td><code>yupana_symbols</code></td><td>Symbol tree for a file</td></tr>
+<tr><td><code>yupana_references</code></td><td>Definitions and references by name or position</td></tr>
+<tr><td><code>yupana_callers</code></td><td>Direct callers</td></tr>
+<tr><td><code>yupana_impact</code></td><td>Transitive callers and structural impact</td></tr>
+<tr><td><code>yupana_dataflow</code></td><td>Local dependence; optional Rust CPG</td></tr>
+<tr><td><code>yupana_analyze</code></td><td>Files and symbols summary</td></tr>
+</tbody></table>
+</div>
+<p>MCP needs the <code>mcp</code> build feature. The full tool reference lists additional
+feature-gated capabilities; a configured feature does not prove it is compiled.</p>
+<h2 id="reading-live-state"><a class="header" href="#reading-live-state">Reading live state</a></h2>
+<p>Prime reads local configuration and, with the quipu feature enabled and graph
+projection configured, the existing durable projection cache. Its entire live
+read has a 650 ms deadline. It does not build a graph, refresh projections,
+contact a server, write caches, generate signing keys or emit a usage spool.</p>
+<p>The base ref is configured, not a measurement of a resident graph's loaded
+commit. Compiled tiers come from the same source as status; phased LSP/CPG configuration
+is not reported as served capability. Local rules are configuration entries. Governed counts
+cover cached structural and text entries, with cache age, endpoint match and
+expiry status; they never claim a fresh live query or current enforcement.
+Other policy planes are not included in that count. Missing, unreadable or
+expired cache state remains explicit; unknown is never reported as zero rules.</p>
+<p><code>--static</code> skips state reads. Degraded reads retain guidance and exit 0.
+<code>--section</code> matches a case-insensitive heading prefix; usage errors exit 2.</p>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next steps</a></h2>
+<ul>
+<li><a href="https://scbrown.github.io/yupana/">Book</a></li>
+<li><a href="https://github.com/scbrown/yupana#readme">README</a></li>
+<li><a href="https://github.com/scbrown/yupana/blob/main/docs/book/src/reference/mcp-tools.md">MCP reference</a></li>
+<li><a href="https://github.com/scbrown/yupana/blob/main/skills/yupana/SKILL.md">Skill</a></li>
+<li>Command help: <code>yupana prime --help</code> (no shipped man page).</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h1>
 <p>Build the binary, then point it at a source tree.</p>
 <pre><code class="language-bash"># Build the base graph for a directory and print a summary
@@ -1963,7 +2029,7 @@ edited file that holds <code>.git</code>. <code>exclude</code> wins over <code>i
 (<code>history</code>, <code>current</code>, or the failure word), <code>score</code> and <code>ms</code>. The record
 includes <code>path</code> only when <code>[yupana.metrics] record_paths</code> allows it.</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="mcp-tools"><a class="header" href="#mcp-tools">MCP Tools</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mcp-tools-1"><a class="header" href="#mcp-tools-1">MCP Tools</a></h1>
 <p>Yupana exposes its capabilities as MCP tools, over stdio and streamable-HTTP.
 Tools use the <code>yupana_*</code> naming convention, alongside Bobbin's <code>bobbin_*</code> and
 Quipu's <code>quipu_*</code> on the same agent.</p>
