@@ -213,8 +213,7 @@ fn effective_config_and_compiled_tiers_remain_distinct() {
         obj["live"]["summary"]["tiers"],
         json!(yupana::types::Tier::served())
     );
-    assert_eq!(obj["live"]["summary"]["configured_tiers"]["lsp"], false);
-    assert_eq!(obj["live"]["summary"]["configured_tiers"]["cpg"], true);
+    assert!(obj["live"]["summary"].get("configured_tiers").is_none());
     assert!(obj["live"]["summary"]["governed_rules"]["count"].is_null());
     assert_eq!(before, snapshot(root));
     std::fs::write(&cfg, "[broken").unwrap();
