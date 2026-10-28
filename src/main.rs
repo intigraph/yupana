@@ -1,7 +1,7 @@
 //! The `yupana` binary entrypoint. See the `yupana` library crate and
 //! `docs/yupana-spec.md` for the design.
 
-use clap::error::ErrorKind;
+use clap::error::{ContextKind, ErrorKind};
 use clap::Parser;
 
 fn main() -> anyhow::Result<()> {
@@ -43,7 +43,12 @@ fn parse_or_fail_open() -> yupana::cli::Cli {
                     | ErrorKind::DisplayVersion
                     | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
             );
-            if !display_only && is_hook_invocation() {
+            // Parser-owned usage identifies prime even if a bad argument is
+            // literally `hook`; actual hook errors retain their fail-open path.
+            let prime_error = e
+                .get(ContextKind::Usage)
+                .is_some_and(|usage| usage.to_string().starts_with("Usage: yupana prime"));
+            if !display_only && !prime_error && is_hook_invocation() {
                 // stderr, not stdout: stdout is the permission channel, and a
                 // guard that cannot parse its own arguments must not appear to
                 // have decided anything.
