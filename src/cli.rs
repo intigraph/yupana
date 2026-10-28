@@ -8,12 +8,13 @@ use std::path::{Path, PathBuf};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 
+#[path = "prime/mod.rs"]
+mod prime;
 use crate::cli_cmds;
 use crate::config::YupanaConfig;
 use crate::extract::extract_symbols;
 
-// Command bodies live in child modules to keep this file under the size
-// limit (yupana #83); they are `impl Cli` blocks reaching `self` as before.
+// Command bodies live in child modules to stay within the size limit.
 #[path = "cli_analyze.rs"]
 mod cli_analyze;
 #[path = "cli_use.rs"]
@@ -74,6 +75,8 @@ pub struct Cli {
 /// The available subcommands.
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Read-only agent orientation and bounded local state.
+    Prime(prime::Args),
     /// Validate a source-bound offline SCIP index and emit navigation facts.
     ImportScip(crate::scip::Args),
     /// Run the MCP server (stdio by default; `--http` for streamable-HTTP).
@@ -332,16 +335,13 @@ impl Cli {
 
     /// Run the parsed command.
     pub async fn run(self) -> anyhow::Result<()> {
-        // DELIBERATE-USE metric (aegis-0nng): the leverage signal aegis-m9ln's
-        // workflow half exists to move — is anyone running analyze/impact/refs
-        // BEFORE a change, or does yupana only ever fire as the passive guard?
-        // The hook is excluded (the guard spools its own richer line) and so is
-        // shell completion (not a use). Fail-silent by the spool's contract.
+        // Hooks, completion and read-only prime do not emit a usage spool.
         if let Some(cmd) = deliberate_use_name(&self.command) {
             crate::metrics::emit("command", &[("cmd", cmd.into())]);
         }
         cli_use::declare_quipu_caller(&self.command); // before dispatch (aegis-tjyhh4)
         match &self.command {
+            Commands::Prime(args) => prime::run(args, self.json, self.config.as_deref()),
             Commands::ImportScip(args) => args.run(),
             Commands::Analyze { path, at } => self.analyze(path, at.as_deref()),
             Commands::Refs { symbol, path, at } => {

@@ -91,3 +91,10 @@ when.
 <!-- stack-table:end -->
 
 [License](LICENSE).
+
+## Agent orientation
+
+Run `yupana prime` (`--brief`, `--json`, `--static`, or `--section core`) for
+orientation and bounded read-only configuration/cache state. See the
+[agent primer](docs/book/src/getting-started/agent-primer.md) and
+[skill](skills/yupana/SKILL.md). It does not refresh projections or write a spool.

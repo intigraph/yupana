@@ -10,7 +10,8 @@ use super::Commands;
 /// silently under-count a surface that grew.
 pub(super) fn deliberate_use_name(cmd: &Commands) -> Option<&'static str> {
     Some(match cmd {
-        Commands::Hook { .. }
+        Commands::Prime(_)
+        | Commands::Hook { .. }
         | Commands::Hooks { .. }
         | Commands::Completions { .. }
         | Commands::AuditRule => return None,
@@ -102,7 +103,8 @@ pub(super) fn declare_quipu_caller(_cmd: &Commands) {}
 #[cfg(feature = "quipu")]
 pub(super) fn quipu_caller_kind(cmd: &Commands) -> Option<&'static str> {
     Some(match cmd {
-        Commands::Hook { .. }
+        Commands::Prime(_)
+        | Commands::Hook { .. }
         | Commands::Hooks { .. }
         | Commands::Daemon { .. }
         | Commands::AuditRule => return None,
