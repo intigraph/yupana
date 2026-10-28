@@ -1,7 +1,7 @@
 //! The `yupana` binary entrypoint. See the `yupana` library crate and
 //! `docs/yupana-spec.md` for the design.
 
-use clap::error::{ContextKind, ErrorKind};
+use clap::error::ErrorKind;
 use clap::Parser;
 
 fn main() -> anyhow::Result<()> {
@@ -43,12 +43,7 @@ fn parse_or_fail_open() -> yupana::cli::Cli {
                     | ErrorKind::DisplayVersion
                     | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
             );
-            // Parser-owned usage identifies prime even if a bad argument is
-            // literally `hook`; actual hook errors retain their fail-open path.
-            let prime_error = e
-                .get(ContextKind::Usage)
-                .is_some_and(|usage| usage.to_string().starts_with("Usage: yupana prime"));
-            if !display_only && !prime_error && is_hook_invocation() {
+            if !display_only && is_hook_invocation() {
                 // stderr, not stdout: stdout is the permission channel, and a
                 // guard that cannot parse its own arguments must not appear to
                 // have decided anything.
@@ -65,15 +60,20 @@ fn parse_or_fail_open() -> yupana::cli::Cli {
     }
 }
 
-/// Whether argv looks like `yupana hook …`.
+/// Whether the first positional command is `hook`.
 ///
-/// Deliberately a loose match rather than positional parsing: the argument that
-/// fails to parse may be the subcommand itself, so there is nothing structured
-/// left to inspect. A false positive (say, a path literally named `hook`) only
-/// costs a malformed command exit `0` instead of exit `2`; a false negative
-/// would let the fail-closed exit through, which is the outcome that matters.
+/// Skip global options and their values; a later argument named `hook` (for
+/// example `prime --section hook` or a config path) is not a hook invocation.
 fn is_hook_invocation() -> bool {
-    std::env::args_os().skip(1).any(|arg| arg == "hook")
+    let mut args = std::env::args_os().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--config" || arg == "--tenant" {
+            args.next();
+        } else if !arg.to_string_lossy().starts_with('-') {
+            return arg == "hook";
+        }
+    }
+    false
 }
 
 /// Clap's [`ErrorKind`] has no stable [`Display`](std::fmt::Display); render a
