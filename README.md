@@ -12,6 +12,15 @@ warn at the moment of an edit. The MCP server exposes fifteen `yupana_*` tools.
 A [yupana](https://en.wikipedia.org/wiki/Yupana) is the Andean counting board
 that worked alongside the quipu: the quipu recorded, the yupana computed.
 
+## Why you would want it
+
+- **Check the blast radius before editing:** follow direct callers and transitive impact.
+- **Find a value's route through code:** inspect structural data flow with its analysis tier.
+- **Give your agent the same checks:** query through MCP or use edit-time hooks.
+
+[Why Yupana](https://intigraph.github.io/yupana/concepts/why-yupana.html)
+explains the use cases and analysis limits.
+
 ## Install
 
 ```sh
@@ -27,7 +36,7 @@ Set `STACK_INSTALL_ROOT` on the receiving shell for another prefix.
 Pinned releases, alternatives, configuration and removal are in the
 [installation and usage reference](docs/installation-reference.md).
 
-## Try it
+## First success in three commands
 
 ![Animated terminal: Yupana follows callers and the impact of changing a function](docs/demos/terminal/demo.svg)
 
@@ -63,7 +72,48 @@ impact 2 symbol(s) affected by changing parse:
 `run` never calls `parse` directly, yet changing `parse` can still break it.
 That second hop is what a text search for `parse(` does not show you.
 
-## Next steps
+## On your own code
+
+Replace `src` with your source directory:
+
+| You want to know | Run |
+|---|---|
+| What structure can be extracted? | `yupana analyze src` |
+| Who directly calls a function? | `yupana callers parse src` |
+| What is affected one hop away? | `yupana impact parse src --hops 1` |
+
+[CLI reference](https://intigraph.github.io/yupana/reference/cli.html)
+covers the remaining commands and options.
+
+## Wire it into your agent
+
+Register the stdio MCP server using its absolute executable path:
+
+```bash
+claude mcp add yupana -- "$(command -v yupana)" serve
+```
+
+Run `yupana prime` (`--brief`, `--json`, `--static`, or `--section core`) for
+orientation and bounded read-only configuration/cache state. It does not refresh
+projections or write a spool. See the
+[agent primer](https://intigraph.github.io/yupana/getting-started/agent-primer.html)
+and [harness integration](https://intigraph.github.io/yupana/getting-started/harness-integration.html).
+
+## Before you start
+
+The release installer needs Python 3.9+, curl and a Linux or macOS shell.
+Release archives cover Linux x86_64 and macOS arm64/x86_64; Linux arm64 needs
+a source build. Put the installed executable directory on `PATH`. Analysis
+coverage depends on the enabled language and extraction tier; inspect the
+reported tier before treating an approximation as a precise result.
+
+## What's next
+
+- [The Yupana book](https://intigraph.github.io/yupana/): concepts and reference.
+- [Docs map](https://intigraph.github.io/yupana/docs-map.html): find every guide.
+- [Quick start](https://intigraph.github.io/yupana/getting-started/quick-start.html): a worked example.
+
+### Related tools and repository knowledge
 
 - [Tambo](https://github.com/scbrown/tambo): guided stack installation and verification.
 - [Camayoc](https://github.com/scbrown/camayoc): governed memory and vocabulary.
@@ -71,7 +121,7 @@ That second hop is what a text search for `parse(` does not show you.
 
 **Load this repository’s graph:** public repository-pendant assets have not yet been verified. When a release supplies the archive, checksum and provenance, follow the [verified import workflow](https://scbrown.github.io/quipu/sharing/index.html): extract the share directory and use `quipu import SHARE_DIR --db repository.db`. Import stages knowledge; ROOT stays unchanged.
 
-## The stack
+## 🧺 The stack
 
 <!-- stack-table:start -->
 
@@ -97,11 +147,11 @@ when.
 
 <!-- stack-table:end -->
 
-[License](LICENSE).
+## Contributing
 
-## Agent orientation
+Run `just build`, `just test` and `just check` before submitting a change.
+See the [contributor guide](https://intigraph.github.io/yupana/reference/contributing.html).
 
-Run `yupana prime` (`--brief`, `--json`, `--static`, or `--section core`) for
-orientation and bounded read-only configuration/cache state. See the
-[agent primer](docs/book/src/getting-started/agent-primer.md) and
-[skill](skills/yupana/SKILL.md). It does not refresh projections or write a spool.
+## 📜 License
+
+[Apache-2.0](LICENSE).
