@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/thread-workshop/yupana.png" width="704" alt="Yupana: a counting board traces code impact, in the shared Thread Workshop illustration style"/></p>
+
 # yupana
 
 **Yupana reads a codebase and answers structural questions about it: what calls
@@ -26,6 +28,11 @@ Pinned releases, alternatives, configuration and removal are in the
 [installation and usage reference](docs/installation-reference.md).
 
 ## Try it
+
+![Animated terminal: Yupana follows callers and the impact of changing a function](docs/demos/terminal/demo.svg)
+
+The recording uses a tiny public fixture. [Read the transcript](docs/demos/terminal/transcript.txt)
+or [reproduce the recording](docs/demos/terminal.md).
 
 Make a tiny crate where `run` calls `load` and `load` calls `parse`:
 
