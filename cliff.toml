@@ -43,6 +43,12 @@ sort_commits = "oldest"
 commit_preprocessors = [
     # Keep a leading tracker-style subject as a release entry.
     { pattern = '^(?:aegis|hq|gassy|qp)-[a-z0-9]{3,6}(?:\.[0-9]+)*:[ \t]*', replace = "other: " },
+    # A body trailer whose whole value is tracker refs ("Work-item: <id>",
+    # "Refs: <id>, <id>") -> the whole line removed. The bare-leftover rule below
+    # would otherwise leave an empty "Work-item:" footer, which git-cliff rejects
+    # as non-conventional and silently skips the commit (yupana #194 was dropped
+    # from 0.16.3 that way). The leading \n keeps the subject line out of reach.
+    { pattern = '\n[A-Za-z][A-Za-z0-9-]*:[ \t]*(?:aegis|hq|gassy|qp)-[a-z0-9]{3,6}(?:\.[0-9]+)*(?:[ \t]*,[ \t]*(?:aegis|hq|gassy|qp)-[a-z0-9]{3,6}(?:\.[0-9]+)*)*[ \t]*(?:\n|$)', replace = "\n" },
     # "(ID, rest)" -> "(rest)"   e.g. (proj-1a2b, #36/#37) -> (#36/#37)
     { pattern = '\((?:aegis|hq|gassy|qp)-[a-z0-9]{3,6}(?:\.[0-9]+)*,[ \t]*', replace = "(" },
     # "(rest, ID)" -> "(rest)"
