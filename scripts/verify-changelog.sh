@@ -96,7 +96,7 @@ cliff_hashes="$(git-cliff --config "$CLIFF_CONFIG" "$range" 2>/dev/null \
 # Independently inspect the raw window BEFORE trusting git-cliff's filtered list.
 # Otherwise generator and verifier can silently agree to omit a bare squash title.
 bare_hashes="$(printf '%s\n' "$newest_section" | python3 scripts/check-release-window.py \
-  --range "$range" --section-stdin)" || exit $?
+  --range "$range" --section-stdin --cliff-config "$CLIFF_CONFIG")" || exit $?
 expected="$bare_hashes"
 if [[ -n "$cliff_hashes" ]]; then
   packaged="$(printf '%s\n' "$cliff_hashes" | scripts/filter-packaged-commits.py)" \
