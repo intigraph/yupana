@@ -26,7 +26,7 @@ The shared `release-binaries.yml` workflow builds natively on three runners:
 | Archive platform suffix | Rust target | Runner |
 |---|---|---|
 | `x86_64-linux-gnu` | `x86_64-unknown-linux-gnu` | `ubuntu-22.04` |
-| `aarch64-apple-darwin` | `aarch64-apple-darwin` | `macos-14` |
+| `aarch64-apple-darwin` | `aarch64-apple-darwin` | `macos-15` |
 | `x86_64-apple-darwin` | `x86_64-apple-darwin` | `macos-15-intel` |
 
 Each `yupana-v<VERSION>-<PLATFORM>.tar.gz` contains the executable `yupana`
