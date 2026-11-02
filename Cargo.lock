@@ -2579,6 +2579,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "quipu-signing"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9590d3ae3ad7383f3b3325fd7649e873f26026460fc9767251028aa2a00c6575"
+dependencies = [
+ "hex",
+ "ring",
+ "sha2",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5027,6 +5038,7 @@ dependencies = [
  "petgraph 0.7.1",
  "predicates",
  "protobuf",
+ "quipu-signing",
  "regex",
  "ring",
  "rmcp",
