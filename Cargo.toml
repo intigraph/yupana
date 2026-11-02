@@ -124,9 +124,12 @@ rudof_lib = { version = "0.2.8", optional = true }
 # reqwest: promotion is a one-shot CLI action, so a blocking client with no async
 # runtime is the honest fit and keeps the `quipu` feature off the tokio graph.
 ureq = { version = "2", optional = true }
-# ed25519 verdict signing (H-PROMOTE-VERDICT). Same crate + scheme as quipu's
-# signing.rs so a yupana-signed verdict verifies under quipu's root of trust.
+# ed25519: the keypair type, and yupana's own signed action records. The verdict
+# scheme itself comes from quipu-signing below, not from a local copy.
 ring = { version = "0.17", optional = true }
+# The shared verdict signing primitives (aegis-s24.3): the same message,
+# custody and encodings quipu signs and verifies with, so yupana carries no copy.
+quipu-signing = { version = "0.1", optional = true }
 # quipu = { git = "https://github.com/scbrown/quipu", rev = "<pin-in-phase-4>", default-features = false, optional = true }
 
 [features]
@@ -147,7 +150,7 @@ langs-extra = [
 # Rust CFG control dependence and bounded interprocedural value flow.
 cpg = []
 # Phase 4: promote committed facts into Quipu, SHACL-validated.
-quipu = ["dep:oxrdf", "dep:oxttl", "dep:oxrdfio", "dep:rudof_lib", "dep:ureq", "dep:ring"]
+quipu = ["dep:oxrdf", "dep:oxttl", "dep:oxrdfio", "dep:rudof_lib", "dep:ureq", "dep:ring", "dep:quipu-signing"]
 # FR-35..FR-39: the game-state harness — generic (non-code) fact ingestion, the
 # `graph-pattern` policy plane, the order guard, speculative what-if, and
 # per-(game, faction) tenancy. Unlike the removed `lsp`/`cpg` flags, this one

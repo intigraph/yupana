@@ -1,12 +1,12 @@
 //! ed25519 verdict signing + promotion (H-PROMOTE-VERDICT, `quipu` feature).
 //!
-//! A yupana edit-time verdict promotes into quipu as a signed `aegis:Verdict`. The
-//! signing MIRRORS quipu's `signing.rs` exactly — the same `ring` ed25519, the
-//! same PKCS#8 host-file custody, the same canonical `v1|…` message, the same hex
-//! encodings — so a yupana-signed verdict verifies under quipu's Phase-0 root of
-//! trust once a human registers yupana's public key (`aegis:publicKey` on its
-//! `aegis:VerifierRegistration`). Diverge from that scheme and the signature
-//! would be well-formed but never TRUSTED.
+//! A yupana edit-time verdict promotes into quipu as a signed `aegis:Verdict`.
+//! Key custody, the canonical `v1|...` message, the evidence hash and the hex
+//! encodings come from the shared `quipu-signing` crate (aegis-s24.3), the same
+//! code quipu itself signs and verifies with. So a yupana-signed verdict
+//! verifies under quipu's root of trust once a human registers yupana's public
+//! key (`aegis:publicKey` on its `aegis:VerifierRegistration`). There is no local
+//! copy of the scheme to drift.
 //!
 //! v1 custody is a host file (like quipu's), not an HSM. The verdict Turtle is
 //! `VerdictShape`-conformant (every required field, including the signature), so
@@ -14,9 +14,7 @@
 
 use std::path::Path;
 
-use ring::rand::SystemRandom;
-use ring::signature::{Ed25519KeyPair, KeyPair};
-use sha2::{Digest, Sha256};
+use ring::signature::Ed25519KeyPair;
 
 use crate::errors::{Error, Result};
 
@@ -27,43 +25,20 @@ pub const VERIFIER: &str = "yupana";
 pub const TIER: &str = "tree-sitter";
 
 /// Load the ed25519 signing keypair (PKCS#8) at `path`, generating and persisting
-/// a fresh one (0600) if absent — identical custody to quipu's `load_or_generate`.
+/// a fresh one (0600) if absent: `quipu_signing::load_or_generate`.
 pub fn load_or_generate(path: &Path) -> Result<Ed25519KeyPair> {
-    let pkcs8: Vec<u8> = if path.exists() {
-        std::fs::read(path).map_err(|e| Error::Promote(format!("read signing key: {e}")))?
-    } else {
-        let rng = SystemRandom::new();
-        let doc = Ed25519KeyPair::generate_pkcs8(&rng)
-            .map_err(|_| Error::Promote("generate signing key".into()))?;
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| Error::Promote(format!("mkdir for signing key: {e}")))?;
-            }
-        }
-        std::fs::write(path, doc.as_ref())
-            .map_err(|e| Error::Promote(format!("write signing key: {e}")))?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
-        }
-        doc.as_ref().to_vec()
-    };
-    Ed25519KeyPair::from_pkcs8(&pkcs8)
-        .map_err(|_| Error::Promote("parse signing key (bad PKCS#8)".into()))
+    quipu_signing::load_or_generate(path).map_err(|e| Error::Promote(e.to_string()))
 }
 
 /// Hex-encoded public key — what a human pastes into yupana's
 /// `aegis:VerifierRegistration aegis:publicKey` in quipu.
 #[must_use]
 pub fn public_key_hex(keypair: &Ed25519KeyPair) -> String {
-    hex::encode(keypair.public_key().as_ref())
+    quipu_signing::public_key_hex(keypair)
 }
 
-/// The canonical byte string signed for a verdict. IDENTICAL to
-/// `quipu::signing::verdict_message` — deterministic field order, `v1|` prefix —
-/// so any verifier re-derives the same message and checks the signature.
+/// The canonical byte string signed for a verdict: `quipu_signing::verdict_message`
+/// with yupana's tier and verifier.
 #[must_use]
 pub fn verdict_message(
     predicate_id: &str,
@@ -71,18 +46,21 @@ pub fn verdict_message(
     outcome: &str,
     evidence_hash: &str,
 ) -> Vec<u8> {
-    format!("v1|{predicate_id}|{target_ref}|{outcome}|{evidence_hash}|{TIER}|{VERIFIER}")
-        .into_bytes()
+    quipu_signing::verdict_message(
+        predicate_id,
+        target_ref,
+        outcome,
+        evidence_hash,
+        TIER,
+        VERIFIER,
+    )
 }
 
 /// The evidence hash bound into the verdict and its signature: `sha256:<hex>` of
 /// the evidence the verdict was computed against (the introduced text).
 #[must_use]
 pub fn evidence_hash(evidence: &str) -> String {
-    format!(
-        "sha256:{}",
-        hex::encode(Sha256::digest(evidence.as_bytes()))
-    )
+    quipu_signing::evidence_hash(evidence)
 }
 
 /// A signed, `VerdictShape`-conformant `aegis:Verdict` in Turtle, ready for
@@ -106,10 +84,9 @@ pub fn verdict_turtle(
         "unsatisfied"
     };
     let hash = evidence_hash(evidence);
-    let signature = hex::encode(
-        keypair
-            .sign(&verdict_message(policy_name, target_ref, outcome, &hash))
-            .as_ref(),
+    let signature = quipu_signing::sign_hex(
+        keypair,
+        &verdict_message(policy_name, target_ref, outcome, &hash),
     );
     // A stable IRI-safe id from the signature, so re-promoting the same verdict is
     // idempotent by content.
@@ -232,6 +209,51 @@ mod tests {
                 .is_ok(),
             "a yupana-signed verdict must verify under ed25519 with the registered key"
         );
+    }
+
+    #[test]
+    fn yupana_and_quipu_sign_one_envelope() {
+        // aegis-s24.3: the message is quipu-signing's own, byte for byte, and a
+        // yupana verdict signature verifies through quipu-signing's verify_hex.
+        let kp = keypair();
+        let hash = evidence_hash("// see ABC-123");
+        let ours = verdict_message("no-ticket-in-comment", "src/a.rs", "unsatisfied", &hash);
+        assert_eq!(
+            ours,
+            b"v1|no-ticket-in-comment|src/a.rs|unsatisfied|sha256:"
+                .iter()
+                .copied()
+                .chain(hash["sha256:".len()..].bytes())
+                .chain(b"|tree-sitter|yupana".iter().copied())
+                .collect::<Vec<u8>>()
+        );
+        let ttl = verdict_turtle(
+            &kp,
+            "no-ticket-in-comment",
+            "src/a.rs",
+            false,
+            "// see ABC-123",
+            crate::types::Freshness::Fresh,
+        );
+        let signature = ttl
+            .split("aegis:signature \"")
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap();
+        assert!(quipu_signing::verify_hex(
+            &public_key_hex(&kp),
+            &ours,
+            signature
+        ));
+        let mut tampered = ours.clone();
+        tampered[3] ^= 1;
+        assert!(!quipu_signing::verify_hex(
+            &public_key_hex(&kp),
+            &tampered,
+            signature
+        ));
     }
 
     #[test]
