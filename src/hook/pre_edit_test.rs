@@ -1484,15 +1484,58 @@ fn native_patch_checks_later_files_without_rechecking_unchanged_context() {
 }
 
 #[test]
-fn malformed_native_patch_is_loud_unknown_not_silent_allow() {
+fn malformed_native_patch_is_denied_before_any_edit() {
     let dir = wide_repo();
     write_policy(dir.path(), NO_TICKET_RULE);
     let input = serde_json::json!({"tool_name":"apply_patch", "tool_input":{"command":"invalid"}})
         .to_string();
-    let Outcome::Notify(message) = guard_payload(&input, dir.path(), None, None) else {
-        panic!("expected fail-open notice");
+    let Outcome::Deny(message) = guard_payload(&input, dir.path(), None, None) else {
+        panic!("unreconstructed native patches must be refused");
     };
-    assert!(message.contains("UNGUARDED"));
+    assert!(message.contains("unsupported patch envelope"));
+}
+
+#[test]
+fn native_patch_missing_or_ambiguous_anchor_denies_the_entire_patch() {
+    let dir = wide_repo();
+    write_policy(dir.path(), NO_TICKET_RULE);
+    // Repeated workflow selectors mirror a real native-tool incident. The
+    // patch tool may accept context that this exact parser cannot reconstruct.
+    let before = "paths:\n  - 'tests/existing.py'\nother_paths:\n  - 'tests/existing.py'\n";
+    let file = dir.path().join("workflow.yml");
+    std::fs::write(&file, before).unwrap();
+    for anchor in ["  - 'tests/existing.py'", "  - 'tests/missing.py'"] {
+        let patch = format!(
+            "*** Begin Patch\n*** Add File: added.rs\n+fn added() {{}}\n*** Update File: workflow.yml\n@@\n {anchor}\n+  - 'tests/new.py'\n*** End Patch"
+        );
+        let payload = serde_json::json!({
+            "tool_name":"apply_patch", "cwd":dir.path(),
+            "session_id":"same-session-malformed-native-control",
+            "tool_input":{"command":patch},
+        })
+        .to_string();
+        // A previous warning/session marker must never suppress a denial.
+        for _ in 0..2 {
+            let Outcome::Deny(reason) = guard_payload(&payload, dir.path(), None, None) else {
+                panic!("missing/ambiguous anchor must deny all targets");
+            };
+            assert!(reason.contains("hunk anchor missing or ambiguous"));
+            let output: serde_json::Value = serde_json::from_str(&deny_envelope(&reason)).unwrap();
+            assert_eq!(output["hookSpecificOutput"]["permissionDecision"], "deny");
+        }
+        assert!(!dir.path().join("added.rs").exists());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), before);
+    }
+    // More context resolves the same repeated line and still takes the normal
+    // policy path. A prior reconstruction failure must not latch a refusal.
+    let valid = serde_json::json!({
+        "tool_name":"apply_patch", "cwd":dir.path(),
+        "tool_input":{"command":"*** Begin Patch\n*** Update File: workflow.yml\n@@\n paths:\n   - 'tests/existing.py'\n+  - 'tests/new.py'\n*** End Patch"},
+    }).to_string();
+    assert_eq!(
+        guard_payload(&valid, dir.path(), None, None),
+        Outcome::Allow
+    );
 }
 
 #[test]
