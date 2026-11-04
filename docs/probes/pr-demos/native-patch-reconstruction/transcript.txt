@@ -1,0 +1,7 @@
+Script started on 2026-11-04 08:30:02-05:00 [COMMAND="python3 scripts/demo-native-patch-guard.py "$OOF_BASE" "$OOF_CANDIDATE"" <not executed on terminal>]
+Same input: Add File followed by Update File with repeated context
+BASE exit=0: {"hookSpecificOutput":{"additionalContext":"yupana: policy guard failed open (hunk anchor missing or ambiguous) — edits are UNGUARDED this session.","hookEventName":"PreToolUse"}}
+CANDIDATE exit=0: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"yupana: refusing this apply_patch request: hunk anchor missing or ambiguous. The complete patch could not be reconstructed for policy evaluation; use supported syntax and unique, ordered context for every hunk."}}
+PASS: advisory -> explicit deny; hook itself writes neither target
+
+Script done on 2026-11-04 08:30:03-05:00 [COMMAND_EXIT_CODE="0"]
