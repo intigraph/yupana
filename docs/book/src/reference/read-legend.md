@@ -69,7 +69,7 @@ are shown. Keywords are deduplicated within a session across calls and snapshot
 replacements. Up to two existing directed relations between unambiguous shown
 entities can use the same remaining budget; co-occurrence never creates an edge.
 
-`Read` responses and Bash `br show` or markdown `cat`, `head`, `tail` and `sed`
+`Read` responses and Bash markdown `cat`, `head`, `tail` and `sed`
 responses are eligible. Failed or interrupted calls stay silent. The current
 adapter supports the Claude completed-tool envelope. Other payload schemas
 require their own tested translation before activation.
