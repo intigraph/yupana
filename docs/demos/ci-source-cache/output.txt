@@ -1,0 +1,12 @@
+Script started on 2026-11-04 03:27:47-05:00 [COMMAND="just --command uv run --no-project --with pyyaml python3 docs/demos/ci-source-cache/demo.py" <not executed on terminal>]
+BASE ba1811278903e7f3c5d3f23c993027588deb2a22 -> CANDIDATE source-cache configuration
+clippy: ['~/.cargo/registry', '~/.cargo/git', 'target'] -> ['~/.cargo/registry', '~/.cargo/git']
+test: ['~/.cargo/registry', '~/.cargo/git', 'target'] -> ['~/.cargo/registry', '~/.cargo/git']
+build: ['~/.cargo/registry', '~/.cargo/git', 'target'] -> ['~/.cargo/registry', '~/.cargo/git']
+Cross-feature archive fixture: Linux-cargo-clippy-quipu-example-lock
+Base fallback: Linux-cargo-clippy-quipu-example-lock
+Candidate fallback: None
+PASS: all non-cache job configuration and feature matrices preserved
+LIMIT: cold hosted restore and full matrix execution remain required
+
+Script done on 2026-11-04 03:27:48-05:00 [COMMAND_EXIT_CODE="0"]
