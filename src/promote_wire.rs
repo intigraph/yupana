@@ -10,7 +10,7 @@ use crate::errors::{Error, Result};
 /// `/knot`. NEVER defaulted to a hardcoded host — a promotion that silently picks a
 /// graph is how facts land in the wrong one.
 pub fn write_knot(endpoint: &str, turtle: &str, source: &str) -> Result<KnotResult> {
-    write_knot_request(endpoint, turtle, source, None, None)
+    write_knot_request(endpoint, turtle, source, None, None, None)
 }
 
 /// Atomically replace one stable producer snapshot through `/knot`.
@@ -20,7 +20,17 @@ pub fn write_knot_snapshot(
     source: &str,
     snapshot: &str,
 ) -> Result<KnotResult> {
-    write_knot_request(endpoint, turtle, source, Some(snapshot), None)
+    write_knot_request(endpoint, turtle, source, Some(snapshot), None, None)
+}
+
+/// Validate an explicitly selected graph without touching an endpoint.
+/// Empty, relative or malformed IRIs refuse rather than silently targeting ROOT.
+pub fn validate_target_graph(graph: Option<&str>) -> Result<()> {
+    if let Some(graph) = graph {
+        oxrdf::NamedNode::new(graph)
+            .map_err(|e| Error::Promote(format!("invalid target graph IRI {graph:?}: {e}")))?;
+    }
+    Ok(())
 }
 
 pub(super) fn write_knot_request(
@@ -29,7 +39,9 @@ pub(super) fn write_knot_request(
     source: &str,
     snapshot: Option<&str>,
     valid_from: Option<&str>,
+    graph: Option<&str>,
 ) -> Result<KnotResult> {
+    validate_target_graph(graph)?;
     let url = format!("{}/knot", endpoint.trim_end_matches('/'));
     let auth = crate::quipu_auth::require(endpoint, None).map_err(Error::Promote)?;
     // Provenance on every write (promotion tail item 4): quipu records actor +
@@ -46,6 +58,9 @@ pub(super) fn write_knot_request(
     }
     if let Some(time) = valid_from {
         body["valid_from"] = serde_json::Value::String(time.to_string());
+    }
+    if let Some(graph) = graph {
+        body["graph"] = serde_json::Value::String(graph.to_string());
     }
     let body = body.to_string();
 

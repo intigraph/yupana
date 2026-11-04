@@ -46,6 +46,11 @@ pub struct PromoteArgs {
     /// found. `--dry-run` needs no target.
     #[arg(long)]
     pub to: Option<String>,
+    /// Existing committed named graph to write into; omitted means ROOT.
+    /// This selects storage scope, never the namespace of promoted entities.
+    /// Requires an explicit --to for a write; does not create a graph.
+    #[arg(long, value_name = "IRI")]
+    pub graph: Option<String>,
     /// Extract and SHACL-validate the projection, then STOP — write nothing.
     /// Answers "would this promotion conform?" without touching the graph.
     #[arg(long)]
@@ -180,6 +185,7 @@ impl Cli {
         path: &Path,
         commit: &str,
         to: Option<&str>,
+        graph: Option<&str>,
         repo: Option<&str>,
         dry_run: bool,
         replace_snapshot: bool,
@@ -203,6 +209,7 @@ impl Cli {
         // default it. The MCP tool keeps its own discovery — there the
         // endpoint comes from a server an operator deliberately started, not from
         // whatever config is ambient in an agent's shell.
+        crate::promote::validate_target_graph(graph)?;
         let cfg = self.load_config(path)?;
         // §9.4 branch modeling (GH #4), refused HERE — before any tree is read —
         // when the configured model is the named-graph one nothing implements.
@@ -337,6 +344,7 @@ impl Cli {
                 endpoint.as_deref(),
                 dry_run,
                 sub.list_keys,
+                graph,
             );
         }
         // ⛔ REFUSE THE BARE APPEND PATH (aegis-rz75m6, sattler 2026-09-07).
@@ -376,16 +384,23 @@ impl Cli {
         }
         let outcome = match (dry_run, &endpoint) {
             (true, ep) => crate::promote::dry_run(ep.as_deref(), &turtle, &source)?,
-            (false, Some(ep)) if replace_snapshot => crate::promote::promote_snapshot_at(
+            (false, Some(ep)) if replace_snapshot => {
+                crate::promote::promote_snapshot_into_graph_at(
+                    ep,
+                    &turtle,
+                    &source,
+                    &format!("code:{repo}"),
+                    Some(&valid_from),
+                    graph,
+                )?
+            }
+            (false, Some(ep)) => crate::promote::promote_into_graph_at(
                 ep,
                 &turtle,
                 &source,
-                &format!("code:{repo}"),
                 Some(&valid_from),
+                graph,
             )?,
-            (false, Some(ep)) => {
-                crate::promote::promote_at(ep, &turtle, &source, Some(&valid_from))?
-            }
             // Unreachable: the resolution above bails on a write with no target.
             // Spelled as a refusal rather than an `expect` so that if that match
             // is ever edited, a missing target degrades to a refusal, never a panic
@@ -422,6 +437,7 @@ impl Cli {
         _path: &Path,
         _commit: &str,
         _to: Option<&str>,
+        _graph: Option<&str>,
         _repo: Option<&str>,
         _dry_run: bool,
         _replace_snapshot: bool,
