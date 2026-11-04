@@ -232,7 +232,7 @@ fn normalize_token(raw: Option<&str>) -> Option<String> {
 
 #[path = "promote_wire.rs"]
 mod promote_wire;
-pub use promote_wire::{write_knot, write_knot_snapshot, KnotResult};
+pub use promote_wire::{validate_target_graph, write_knot, write_knot_snapshot, KnotResult};
 
 /// The aggregated result of a (possibly chunked) promotion write.
 #[derive(Debug, Clone)]
@@ -322,6 +322,19 @@ pub fn promote_at(
     source: &str,
     valid_from: Option<&str>,
 ) -> Result<Promotion> {
+    promote_into_graph_at(endpoint, turtle, source, valid_from, None)
+}
+
+/// Promote into an explicit registered graph without changing entity identities.
+/// An omitted graph preserves the legacy ROOT request envelope.
+pub fn promote_into_graph_at(
+    endpoint: &str,
+    turtle: &str,
+    source: &str,
+    valid_from: Option<&str>,
+    graph: Option<&str>,
+) -> Result<Promotion> {
+    validate_target_graph(graph)?;
     let chunks = match prepare(turtle, source)? {
         Prepared::Ready(chunks) => chunks,
         Prepared::Refused(refusal) => return Ok(refusal),
@@ -334,7 +347,7 @@ pub fn promote_at(
         valid_from: Vec::new(),
     };
     for (i, chunk) in chunks.iter().enumerate() {
-        let knot = promote_wire::write_knot_request(endpoint, chunk, source, None, valid_from).map_err(|e| {
+        let knot = promote_wire::write_knot_request(endpoint, chunk, source, None, valid_from, graph).map_err(|e| {
             // A server-side refusal names a focus node in a payload only yupana
             // held, so this failure needs the projection retained too.
             let dump = dump_payload(turtle, source);
@@ -383,6 +396,19 @@ pub fn promote_snapshot_at(
     snapshot: &str,
     valid_from: Option<&str>,
 ) -> Result<Promotion> {
+    promote_snapshot_into_graph_at(endpoint, turtle, source, snapshot, valid_from, None)
+}
+
+/// Replace a producer snapshot only in the explicitly selected graph.
+pub fn promote_snapshot_into_graph_at(
+    endpoint: &str,
+    turtle: &str,
+    source: &str,
+    snapshot: &str,
+    valid_from: Option<&str>,
+    graph: Option<&str>,
+) -> Result<Promotion> {
+    validate_target_graph(graph)?;
     match prepare(turtle, source)? {
         Prepared::Refused(refusal) => Ok(refusal),
         Prepared::Ready(_) => {
@@ -392,6 +418,7 @@ pub fn promote_snapshot_at(
                 source,
                 Some(snapshot),
                 valid_from,
+                graph,
             )
             .map_err(|e| {
                 let dump = dump_payload(turtle, source);

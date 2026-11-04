@@ -463,13 +463,11 @@ impl Cli {
                 if !self.trigger_admits(path, commit, a.trigger)? {
                     return Ok(());
                 }
-                // `--subset` and its base travel as ONE value, so "subset with
-                // no base" is unrepresentable below rather than merely refused
-                // by clap. The two are meaningless apart.
                 self.promote(
                     path,
                     commit,
                     a.to.as_deref(),
+                    a.graph.as_deref(),
                     a.repo.as_deref(),
                     a.dry_run,
                     a.replace_snapshot,
