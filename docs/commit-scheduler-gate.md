@@ -33,7 +33,8 @@ The regex receives canonical facts beginning with `external-scheduler/v1:`.
 Use an anchored regex covering every admitted family, and record both matching
 and nonmatching examples. Missing policy, invalid regex, uncovered facts,
 unreadable Git data and malformed configuration return `unknown` and fail the
-command. UNKNOWN never means a clean commit.
+command, including when the governed rule is at WARN. Advise mode permits
+measured violations; it does not turn unmeasured input into a clean commit.
 
 `enforcementTier=warn` returns `advise` and permits measured additions.
 `enforcementTier=block` returns `refuse` and exits nonzero. No exposure downgrade
@@ -51,7 +52,10 @@ This is a scheduling guard, not an interpreter for arbitrary generated programs
 or computed command names. Unsupported source containing scheduler tokens is
 reported UNKNOWN; it is not silently admitted. Non-UTF8 scheduler configuration,
 opaque changed Git modes and source blobs over 4 MiB also require explicit
-resolution. Ordinary documentation and binary assets are not scheduler source.
+resolution. Ordinary documentation, JSON/JSONL, RDF NT/NQ/TTL, CSV and binary
+assets are data rather than scheduler source, even when they quote scheduler
+tokens. Unsupported executable source (for example Python constructing a cron
+command) still returns UNKNOWN and refuses even at WARN.
 
 ## Data-bound migration exceptions
 

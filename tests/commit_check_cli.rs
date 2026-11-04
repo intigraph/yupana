@@ -207,3 +207,47 @@ fn actual_cli_advise_clean_ci_range_and_missing_policy_unknown() {
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(report["outcome"], "allow");
 }
+
+#[test]
+fn data_formats_allow_but_unsupported_executable_unknown_still_refuses_in_warn() {
+    let dir = fixture();
+    let repo = dir.path();
+    for extension in ["json", "jsonl", "nt", "nq", "ttl", "csv"] {
+        let path = format!("archive.{extension}");
+        std::fs::write(repo.join(&path), "crontab -\nOnCalendar=hourly\n").unwrap();
+        ok(repo, &["add", "--", &path]);
+    }
+    let message = repo.join("message");
+    std::fs::write(&message, "data edit\n").unwrap();
+    for expected in ["allow", "unknown", "advise"] {
+        if expected == "unknown" {
+            std::fs::write(
+                repo.join("task.py"),
+                "import subprocess\nsubprocess.run(['crontab', '-'])\n",
+            )
+            .unwrap();
+            ok(repo, &["add", "--", "task.py"]);
+        } else if expected == "advise" {
+            ok(repo, &["rm", "--cached", "--", "task.py"]);
+            std::fs::remove_file(repo.join("task.py")).unwrap();
+            std::fs::write(repo.join("clock.timer"), "[Timer]\nOnCalendar=hourly\n").unwrap();
+            ok(repo, &["add", "--", "clock.timer"]);
+        }
+        let (endpoint, thread) = server(Some("warn"));
+        let output = Command::new(env!("CARGO_BIN_EXE_yupana"))
+            .arg("commit-check")
+            .arg("--repo")
+            .arg(repo)
+            .arg("--message-file")
+            .arg(&message)
+            .arg("--endpoint")
+            .arg(endpoint)
+            .env("YUPANA_METRICS_PATH", repo.join("metrics.jsonl"))
+            .output()
+            .unwrap();
+        thread.join().unwrap();
+        assert_eq!(output.status.success(), expected != "unknown", "{output:?}");
+        let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["outcome"], expected);
+    }
+}

@@ -78,7 +78,10 @@ pub fn facts(path: &str, bytes: &[u8]) -> Result<Vec<Fact>> {
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("");
-    if matches!(extension, "md" | "rst" | "txt" | "log") {
+    if matches!(
+        extension,
+        "md" | "rst" | "txt" | "log" | "json" | "jsonl" | "nt" | "nq" | "ttl" | "csv"
+    ) {
         return Ok(Vec::new());
     }
     let text = match std::str::from_utf8(bytes) {

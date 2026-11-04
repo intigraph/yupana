@@ -151,3 +151,26 @@ fn docs_are_not_installed_scheduler_units() {
         0
     );
 }
+
+#[test]
+fn structured_data_tokens_are_not_scheduler_source() {
+    let bytes = b"crontab -\nOnCalendar=hourly\nStartInterval\n/etc/cron.d/job\n";
+    for extension in ["json", "jsonl", "nt", "nq", "ttl", "csv"] {
+        assert!(
+            facts(&format!("archive.{extension}"), bytes)
+                .unwrap()
+                .is_empty(),
+            "{extension}"
+        );
+    }
+    // The exception is format-bound. Executable configuration still yields a
+    // scheduler fact and unsupported executable source remains explicitly unknown.
+    assert!(!facts("clock.timer", b"[Timer]\nOnCalendar=hourly\n")
+        .unwrap()
+        .is_empty());
+    assert!(facts(
+        "task.py",
+        b"import subprocess\nsubprocess.run(['crontab', '-'])\n"
+    )
+    .is_err());
+}
