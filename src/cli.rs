@@ -235,6 +235,9 @@ enum Commands {
     /// with no side effects (aegis-l26g8x).
     #[cfg(feature = "quipu")]
     RuleTest(crate::rule_test::RuleTestArgs),
+    /// Judge staged scheduler additions at commit-msg, or an exact CI commit range.
+    #[cfg(feature = "quipu")]
+    CommitCheck(crate::commit_check::Args),
     /// Evaluate one explicit structural rule and source from stdin, without side effects.
     AuditRule,
     /// Draft policy raw material from an exemplar: Selector + tiered
@@ -428,6 +431,8 @@ impl Cli {
             }
             #[cfg(feature = "quipu")]
             Commands::RuleTest(args) => args.run(),
+            #[cfg(feature = "quipu")]
+            Commands::CommitCheck(args) => args.run(),
             Commands::AuditRule => crate::audit_rule::run(),
             Commands::Exemplar {
                 text,

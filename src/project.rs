@@ -45,6 +45,11 @@ pub fn fetch_text_rules(endpoint: &str) -> Result<Vec<TextRule>> {
     text_fetch::fetch(endpoint)
 }
 
+/// Read only governed commit-scheduler rules through the normal decoder.
+pub fn fetch_commit_rules(endpoint: &str) -> Result<Vec<TextRule>> {
+    text_fetch::fetch_commit_rules(endpoint)
+}
+
 /// POST a SPARQL query to quipu's `/query`, returning the raw body.
 pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
     let url = format!("{}/query", endpoint.trim_end_matches('/'));
