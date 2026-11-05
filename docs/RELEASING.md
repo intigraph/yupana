@@ -49,10 +49,10 @@ instructions in the README or a platform-aware package manager.
 
 ## The crates.io lane
 
-**`yupana` is not on crates.io yet.** The registry has no `yupana` crate at all;
-the pre-rename name `hank` sits at `0.4.0`, published from the repository that
-is now an archived tombstone. So the first successful run of this lane does not
-resume anything — it **claims the name**.
+The lane was introduced before the first registry publication under the current
+crate name. Its first successful publish therefore claims that name. Check the
+registry before planning a release; this historical rationale is not a receipt
+for the current publication state.
 
 That is why the publish is gated:
 

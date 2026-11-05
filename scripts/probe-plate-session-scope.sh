@@ -19,6 +19,7 @@
 # Exit: 0 all arms as expected · 1 an arm failed · 2 could not run the probe.
 set -uo pipefail
 
+# Compatibility: older hosts may expose only the former executable name.
 BIN="${1:-$(command -v yupana || command -v hank)}"
 [ -x "$BIN" ] || { echo "FATAL: no yupana binary (got '${BIN:-}')"; exit 2; }
 
