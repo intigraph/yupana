@@ -21,7 +21,7 @@ def isolated_environment(private):
     """Native workers have private configuration and no ambient credentials."""
     home = Path(private) / "worker-home"
     home.mkdir(mode=0o700, exist_ok=True)
-    env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL", "SYSTEMROOT", "WINDIR") if key in os.environ}
+    env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL", "SYSTEMROOT", "WINDIR", "ORT_DYLIB_PATH") if key in os.environ}
     env["HOME"] = str(home.resolve())
     for key, name in (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"), ("XDG_CACHE_HOME", "cache"), ("XDG_STATE_HOME", "state")):
         directory = home / name
@@ -30,6 +30,16 @@ def isolated_environment(private):
     env["GIT_CONFIG_NOSYSTEM"] = "1"
     env["GIT_CONFIG_GLOBAL"] = os.devnull
     return env
+
+
+
+def receiver_shapes(tooling):
+    """Rules belong to the rule-set loader, not the receiver's SHACL catalogue."""
+    shapes = sorted(path for path in (Path(tooling) / "shapes").glob("*.ttl")
+                    if not path.name.endswith(".rules.ttl"))
+    if not shapes:
+        raise ValueError("verified engine source has no receiver shapes")
+    return shapes
 
 
 def command(args, *, env=None, cwd=None):
@@ -341,10 +351,7 @@ batch_size = 64
     with sqlite3.connect("file:" + str(index_database) + "?mode=ro", uri=True) as original:
         with sqlite3.connect(database) as target:
             original.backup(target)
-    shapes = sorted((tooling / "shapes").glob("*.ttl"))
-    if not shapes:
-        raise ValueError("verified engine source has no receiver shapes")
-    for shape in shapes:
+    for shape in receiver_shapes(tooling):
         run([binary, "shapes", "load", shape.stem, shape, "--db", database])
     run(
         [
