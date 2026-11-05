@@ -1,0 +1,323 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Outbound approval guard - Yupana — Live Code Structure</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="In-memory, multi-tenant code-analysis engine for the Bobbin × Quipu stack">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Yupana — Live Code Structure</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/yupana" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/yupana/edit/main/docs/book/src/reference/outbound-guard.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="outbound-approval-guard"><a class="header" href="#outbound-approval-guard">Outbound approval guard</a></h1>
+<p>The outbound adapter refuses a selected human-facing send unless a protected
+producer supplies fresh, signed direct-user approval and a domain content-gate
+verdict of <strong>send</strong> for the exact attempted message. It does not send anything.
+Unknown actions refuse; a generic successful certification is insufficient.</p>
+<p>This is separate from the existing fail-open edit and command hooks. Run the
+outer adapter as a harness <strong>PreToolUse</strong> hook, with a timeout of at least ten
+seconds:</p>
+<pre><code class="language-sh">python3 /managed/scripts/guard-outbound.py \
+  --yupana /managed/bin/yupana \
+  --policy /protected/outbound-policy.json \
+  --receipts /protected/outbound-receipts
+</code></pre>
+<p>The wrapper invokes <code>yupana hooks guard-outbound</code>. The plural <code>hooks</code> command
+does not use the singular hook command's parse-error fail-open path. Missing,
+old, failing, malformed or silent backends produce a denial. Input acquisition
+and backend execution each have a three-second deadline. Input is bounded at
+one MiB; backend output is bounded at eight KiB. Only fixed decision codes reach
+the harness; message text, recipients, parser errors and backend stderr do not.
+The wrapper has Python's standard-library dependency and requires a POSIX host.</p>
+<h2 id="protected-producer-and-configuration"><a class="header" href="#protected-producer-and-configuration">Protected producer and configuration</a></h2>
+<p>The policy pins a revision digest, separate approval and gate issuer public
+keys, a maximum age of one to 3,600 seconds, exact non-send tool names and
+explicit send adapters. Adapter JSON pointers select message text, recipient
+and thread from the actual tool input. Replies/forwards can require a thread;
+new-message adapters bind an absent thread explicitly. Match tool names exactly.
+Validate each mapping against its actual connector contract before activation.</p>
+<p>Do not put a mutable tool schema or issuer key in tool input. The policy,
+receipt store, hook configuration and wrapper must be controlled outside the
+agent's write authority. A broadly available host signing key, an environment
+variable or another agent repeating “the user approved” does not establish human
+approval. A shared Unix identity is not that isolation boundary. Existing
+generic certification commands are not an approval issuer.</p>
+<p>The protected producer must show the user the complete operation, including
+all recipients, thread, subject, formatting and attachments, and attest a direct
+user-chat approval of those exact inputs. A generic instruction to send unseen
+drafts is insufficient. The content-gate producer independently checks the same
+operation. Do not mint production keys or infer an issuer from a received proof.</p>
+<p>Both receipts use the existing signed action-certification envelope. The
+approval has <code>verb: approve-outbound</code>, <code>result: approved</code>, and a satisfied
+<code>human-approval</code> check whose expected and observed values are <code>direct-user-chat</code>.
+The gate has <code>verb: content-gate</code>, <code>result: send</code>, and a satisfied <code>content-gate</code>
+check whose expected and observed values are <code>send</code>. Evidence references are
+SHA-256 digests, not private content. Both have
+<code>target_class: outbound-human-message</code>, <code>sha</code> equal to the exact text SHA-256,
+and <code>target</code> equal to the recipient/thread fingerprint. Signed scope provenance
+binds <code>policy_revision</code> and <code>action_sha256</code>. Future or expired evidence refuses.</p>
+<p><code>action_sha256</code> covers the entire actual tool name and input, with recursively
+sorted object keys and unchanged array order and string values. The text hash
+uses UTF-8 bytes without trimming or Unicode/newline normalization. Adapters accept only top-level text, recipient and thread fields plus an
+explicit subset of literal <code>subject</code>, <code>cc</code> and <code>bcc</code> fields. Undeclared fields,
+attachments, external drafts, file references and nested schemas refuse before
+receipt verification. CC and subject changes invalidate approval even when body
+text is unchanged. Hashing a reference cannot freeze its backing bytes; these
+references are unsupported rather than treated as approved content. The store entry is <code>&lt;action_sha256&gt;.json</code> with
+<code>approval</code> and <code>content_gate</code> records; moving old evidence under a new lookup
+name cannot repair its signature binding. Signature verification requires a
+build with the existing <code>quipu</code> feature; other builds refuse sends.</p>
+<h2 id="browser-and-coverage-limits"><a class="header" href="#browser-and-coverage-limits">Browser and coverage limits</a></h2>
+<p>A raw coordinate click or keypress does not contain the composed message.
+Never populate its supposed current text/hash from the approval receipt: that
+would compare the proof to itself. Such browser actions remain refused until
+a protected browser adapter can independently establish current composed text,
+destination and exact operation. Screenshot/read-only or draft tools may be
+explicitly classified as non-send only after their actual contracts are reviewed.
+An unknown action must be classified by the operator before retrying; a blind
+permission dialog is not a substitute for exact-text approval.</p>
+<p>The generic shipped hook bundle is unchanged. Enabling this blocking hook
+requires a reviewed tool matcher/catalogue, protected issuer custody and normal
+managed installation. A matcher omitting a connector or script-based escape
+does not guard that path. CLI fixtures do not prove installed harness coverage,
+DOM freshness, one-shot delivery, browser race freedom or live enforcement.
+This guard does not replace the domain content gate or a send adapter's own
+duplicate-delivery protections. Receipt lifetime alone is not single-use proof.</p>
+<h2 id="qualification"><a class="header" href="#qualification">Qualification</a></h2>
+<p><code>just outbound-tests</code> exercises backend failure, bad output, deadlines, privacy
+and zero fake dispatches. Rust tests cover exact signed input bindings, changed
+text/destination, blocked gate, relayed approval, keys, expiry and revision.
+The <code>outbound_guard</code> integration tests run actual CLI/wrapper processes with
+fresh synthetic keys: unapproved browser click, changed-text send and missing
+gate refuse before the fake dispatch; exact receipts and draft creation allow.
+No real account, message, private policy or credential is used.</p>
+<p>Before claiming production acceptance, observe a refused real-harness fixture
+with zero dispatches, an approved fixture pass, configuration/issuer custody,
+all covered execution paths and a rollback to a documented safe manual path.
+Source tests and a valid signature alone are not installed acceptance.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../reference/policy-guard.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../reference/replay.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../reference/policy-guard.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../reference/replay.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
