@@ -43,8 +43,13 @@ test *args="":
     python3 tests/spool_to_dogwood.py
     just session-guard --selftest
     python3 tests/session_depth.py
+    just outbound-tests
     just install-tests
     just release-tests
+
+# Exercise outbound refusal without connectors or real approval receipts.
+outbound-tests:
+    python3 tests/outbound_adapter.py
 
 # Exercise draft/upload/publish ordering without contacting a public forge.
 release-tests:

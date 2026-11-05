@@ -9,6 +9,8 @@ use crate::hooks_install::{self as hi, Harness};
 /// What `yupana hooks` does.
 #[derive(Debug, Subcommand)]
 pub enum HooksAction {
+    /// Refuse outbound sends without exact-input protected approval and gate receipts.
+    GuardOutbound(crate::outbound_cli::GuardArgs),
     /// Print yupana's hook bundle (schema `st.hook-bundle/1`): the one source of
     /// truth for which hooks yupana installs.
     Bundle,
@@ -50,6 +52,7 @@ impl Target {
 pub fn run(action: &HooksAction) -> Result<i32> {
     let bundle = hi::bundle();
     let target = match action {
+        HooksAction::GuardOutbound(args) => return args.run(),
         HooksAction::Bundle => {
             println!("{}", serde_json::to_string_pretty(&bundle)?);
             return Ok(0);

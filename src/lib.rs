@@ -85,6 +85,8 @@ pub mod landing_admission;
 #[cfg(feature = "mcp")]
 pub mod mcp;
 pub mod metrics;
+pub mod outbound;
+pub mod outbound_cli;
 pub mod plate;
 pub mod policy;
 /// The projected work-item maps behind the capability ladder's lower rungs.

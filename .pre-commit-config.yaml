@@ -105,6 +105,14 @@ repos:
         files: ^docs/book/
         pass_filenames: false
 
+      - id: outbound-adapter-tests
+        name: fail-closed outbound adapter controls
+        entry: python3 tests/outbound_adapter.py
+        language: system
+        files: ^(scripts/guard-outbound\.py|tests/outbound_adapter\.py|justfile)$
+        pass_filenames: false
+        verbose: true
+
       - id: install-contract-test
         name: local install contract (one full-feature binary, two names)
         entry: scripts/selftest-install-local.sh
