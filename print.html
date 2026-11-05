@@ -1353,12 +1353,25 @@ requiring the write to be spelled out on the command line is the fix.</p>
 <p>The MCP <code>yupana_promote</code> tool keeps its own fallback to the configured endpoint:
 there the target comes from a server an operator deliberately started and pointed
 somewhere, not from whatever config happens to be ambient in an agent's shell.</p>
+<h3 id="named-graph-destinations"><a class="header" href="#named-graph-destinations">Named graph destinations</a></h3>
+<p><code>promote --to &lt;url&gt; --graph &lt;iri&gt;</code> selects an existing committed named graph.
+Omitting <code>--graph</code> preserves the ROOT destination. Empty, relative and malformed
+graph IRIs refuse before any HTTP request; an unknown or non-writable graph is
+refused by Quipu. This option does not create graphs or authorize a write without
+<code>--to</code>.</p>
+<p>Graph selection applies to full snapshot replacement, <code>--subset</code> and <code>--append</code>.
+It changes only the request's destination: entity IRIs, repository identity,
+snapshot keys, authored valid time and provenance retain their existing meaning.
+<code>--dry-run</code> still sends nothing. Selecting a graph does not enable per-branch
+modeling, migrate an existing snapshot or configure separate writable stores.
+Migration and the readers' datasets must be qualified before changing a scheduled
+producer's target. Existing library and MCP callers that omit a graph keep ROOT.</p>
 <h3 id="quipu-write-credentials"><a class="header" href="#quipu-write-credentials">Quipu write credentials</a></h3>
 <p>Promotion, share writes and disk-impact hook observations use the same credential
 order: a nonempty, trimmed <code>QUIPU_AUTH_TOKEN</code>, then <code>QUIPU_AUTH_TOKEN_FILE</code>, then
 <code>~/.config/quipu/token</code>. An explicit file that is missing or unreadable does not
 fall back to another file. The former legacy token path is used only when selected
-explicitly. Obtain an accepted token from the service administrator; CABOODLE can
+explicitly. Obtain an accepted token from the service administrator; Tambo can
 install and verify it without rotating the server credential.</p>
 <p>A missing, unreadable, invalid or rejected credential disables later writes to
 that server for the session. Deliberate CLI writes emit one diagnostic; disk
@@ -1370,7 +1383,7 @@ the diagnostic or event states that suppression is process only. Repair the cred
 start a new session before retrying. Public reads remain available.</p>
 <p><code>yupana status</code> reports the credential state and suppression state without
 printing a token or making a write. <code>configured_acceptance_unproven</code> means a
-credential was found, not that the server accepted it; use <code>caboodle doctor</code> for
+credential was found, not that the server accepted it; use <code>tambo doctor</code> for
 an authenticated verification.</p>
 <h2 id="yupana-promote---dry-run--validate-without-writing"><a class="header" href="#yupana-promote---dry-run--validate-without-writing"><code>yupana promote --dry-run</code> — validate without writing</a></h2>
 <p><code>--dry-run</code> extracts the projection and runs the <strong>same</strong> SHACL gate a real
