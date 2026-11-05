@@ -156,7 +156,6 @@ See the [contributor guide](https://intigraph.github.io/yupana/reference/contrib
 
 [Apache-2.0](LICENSE).
 
-
 ### Repository pendant provider
 
 Repository pendant builders require explicitly pinned model and tokenizer bytes
