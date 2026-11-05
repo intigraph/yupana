@@ -41,6 +41,7 @@ sort_commits = "oldest"
 # preprocessor block quipu's cliff.toml carries. Without this, an entry like
 # "... pre-edit guard (<internal-id>)" ships verbatim (it was about to).
 commit_preprocessors = [
+    { pattern = '^Add governed commit boundary for external schedulers \(#208\)(\n|$)', replace = "feat: add governed commit boundary for external schedulers (#208)$1" },
     # Keep a leading tracker-style subject as a release entry.
     { pattern = '^(?:aegis|hq|gassy|qp)-[a-z0-9]{3,6}(?:\.[0-9]+)*:[ \t]*', replace = "other: " },
     # A body trailer whose whole value is tracker refs ("Work-item: <id>",
