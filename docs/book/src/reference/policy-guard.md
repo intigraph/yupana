@@ -61,10 +61,12 @@ tolerated. `tool_input` shape by tool:
 | `Edit` | `file_path`, `old_string`, `new_string` |
 | `Write` | `file_path`, `content` |
 | `MultiEdit` | `file_path`, `edits[].old_string`, `edits[].new_string` |
+| `apply_patch` | `command` (complete native patch; see Native Codex edits) |
 
-Every field is optional as far as the parser is concerned. **A payload Yupana
-cannot parse, or one naming a file in no known language, is an ALLOW** — the
-guard only ever speaks up about edits it genuinely understands.
+For the file-oriented tools, every field is optional as far as the parser is
+concerned. A payload that does not identify a supported edit is allowed. A
+recognized `apply_patch` request must reconstruct every target before policy
+evaluation; an unknown reconstruction is denied even for an unrecognized language.
 
 ## (b) Output — allow and deny
 
@@ -122,11 +124,11 @@ on large trees — which, by the rule above, means it fails open. That is the
 intended degradation, not a bug: on big repos the guard has teeth only once the
 daemon serves it.
 
-## (d) Fail open — non-negotiable
+## (d) Availability failures fail open
 
-**Every failure mode allows the edit.** The harness launches every crew agent
-through this hook; a guard that fails closed bricks the fleet the moment Yupana is
-unavailable.
+Availability failures allow the edit so an unavailable guard does not brick the
+fleet. A recognized native patch whose complete contents cannot be reconstructed
+is refused instead: the edit tool must not apply unchecked targets.
 
 | Failure | Result |
 |---|---|
@@ -138,6 +140,7 @@ unavailable.
 | quipu unprojectable, cache servable | exit `0` → **rules still evaluated**, verdict marked STALE |
 | quipu unprojectable, no servable cache | exit `0` + loud line → edit proceeds |
 | Policy says deny | exit `0` + deny JSON → **edit blocked** |
+| Recognized `apply_patch` cannot be reconstructed | exit `0` + deny JSON → **entire patch blocked** |
 
 ### Failing open is a LAST resort, not the first response to a slow quipu
 
@@ -204,7 +207,7 @@ or interpret a missing field in older traffic as public exposure.
 
 ### Invoke it so version skew cannot block the fleet
 
-Every row above fails open except one, and that one is not exotic: it is what
+The process-error rows above fail open except version skew, which is what
 you get by rolling the hook out ahead of the binary, which is the normal
 ordering of a deploy. Invoke the guard through this wrapper rather than bare:
 
@@ -539,9 +542,18 @@ destination scopes. No files are written by the guard.
 The parser reconstructs exact-context patches for verification while passing only
 added lines to introduced-text rules. Unchanged context is not newly introduced
 text. Missing or ambiguous anchors, fuzzy matches and unsupported patch syntax
-produce an explicit UNKNOWN metric and fail-open advisory, not a clean allow.
-This preserves the hook's existing availability contract; it does not certify
-coverage for edits performed through arbitrary shell commands.
+produce an explicit UNKNOWN metric with `response: denied` and refuse the entire
+request through `permissionDecision: deny` (exit 0). No earlier target in a
+multi-file patch is admitted when a later target cannot be reconstructed.
+Denials are emitted on every invocation; session advisory deduplication cannot
+hide them. Resubmit supported syntax with unique, ordered context for every hunk.
+The parser's uncertainty does not establish that the native edit tool would
+reject the patch itself.
+
+This reconstruction boundary is separate from the availability contract above:
+an unavailable binary, config error or timeout still follows its existing
+fail-open behavior. It does not certify coverage for edits performed through
+arbitrary shell commands.
 
 `guard` records in the metrics spool measure edit evaluations. Signed
 `landing-*` certifications measure push/merge evaluations: the two populations

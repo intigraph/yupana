@@ -4,11 +4,10 @@
 //! call is intercepted *before* it lands, sized against the tenant's capability
 //! scope (FR-25), and denied with a readable reason when it exceeds it.
 //!
-//! Everything here is arranged around one invariant: **fail open**. The harness
-//! launches every crew agent through this hook, so a guard that fails closed
-//! bricks the fleet the moment Yupana is unavailable. Only a policy decision
-//! blocks an edit; every error, timeout, and unknown degrades to "allow". See
-//! `docs/book/src/reference/policy-guard.md` for the pinned contract.
+//! Availability errors and timeouts fail open so an unavailable guard does not
+//! brick the fleet. A recognized native patch that cannot be reconstructed is
+//! different: its unchecked targets must not reach the edit tool. Refuse that
+//! request through the normal deny envelope. See the policy-guard reference.
 
 use std::ffi::OsStr;
 use std::io::Read;
@@ -43,7 +42,7 @@ pub enum Outcome {
 
 /// Run the `pre-edit` guard: read the harness payload from stdin, decide, and
 /// print at most one JSON object. Always returns `Ok` — the process must exit 0
-/// so the harness never treats the guard as a fail-closed block.
+/// so denials travel through the explicit permission decision, not process errors.
 pub fn run_pre_edit(tenant: Option<&str>, config_override: Option<&Path>) -> anyhow::Result<()> {
     let mut buf = String::new();
     std::io::stdin().lock().read_to_string(&mut buf).ok();
@@ -94,13 +93,18 @@ fn guard_payload(buf: &str, root: &Path, tenant: Option<&str>, config: Option<&P
                     ("tool", "apply_patch".into()),
                     ("parsed", false.into()),
                     ("result", "unknown".into()),
+                    ("response", "denied".into()),
                     (
                         "session",
                         input.session_id.clone().unwrap_or_default().into(),
                     ),
                 ],
             );
-            return fail_open(&input, "codex_patch", reason);
+            return Outcome::Deny(format!(
+                "yupana: refusing this apply_patch request: {reason}. \
+                 The complete patch could not be reconstructed for policy evaluation; \
+                 use supported syntax and unique, ordered context for every hunk."
+            ));
         }
     };
     let mut outcome = Outcome::Allow;
