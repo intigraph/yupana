@@ -13,9 +13,9 @@
 # would have gone straight to `cargo publish`. quipu got that guard separately;
 # this repo never did.
 #
-# It is also unpublished: crates.io has no `yupana` crate at all (the pre-rename
-# name `hank` sits at 0.4.0 from the now-archived repository). So the first time
-# this lane works it CLAIMS the name, and a crates.io version cannot be
+# This lane was introduced before the first registry publication under the
+# current crate name. The first successful publish CLAIMS that name, and a
+# crates.io version cannot be
 # unpublished — only yanked. That is why the release job is gated on an explicit
 # opt-in variable rather than simply being made to work.
 #

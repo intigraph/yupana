@@ -67,6 +67,7 @@ verify "$stage/yupana"
 exec 9> "$bin_dir/.yupana-install.lock"
 flock 9
 canonical="$bin_dir/yupana"
+# Compatibility: preserve the pre-rename command as a relative alias.
 legacy="$bin_dir/hank"
 test ! -d "$canonical" && test ! -d "$legacy" || {
     echo 'ERROR: an install destination is a directory' >&2; exit 1;

@@ -5,9 +5,9 @@ publish = false
 # ⛔ WITHOUT THIS, THE LANE DEADLOCKS AT THE CURRENT VERSION AND SAYS SO IN GREEN.
 #
 # release-plz resolves "the last released version" by downloading the crate from
-# crates.io. `yupana` HAS NEVER BEEN PUBLISHED there ("crate `yupana` does not
-# exist" — measured 2026-09-06; only the pre-rename `hank` 0.4.0 from the archived
-# repo). With no registry baseline it concludes the package is unreleased and that
+# crates.io. On 2026-09-06, the current crate name had no registry publication.
+# This records that historical failure, not the current registry state.
+# With no registry baseline it concludes the package is unreleased and that
 # the manifest version IS the next version. Measured, run 34066854500:
 #
 #     INFO yupana: next version is 0.6.5        <- no bump
