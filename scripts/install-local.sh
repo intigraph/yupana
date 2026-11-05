@@ -39,6 +39,7 @@ install_root=${YUPANA_INSTALL_ROOT:-${CARGO_INSTALL_ROOT:-${CARGO_HOME:-$HOME/.c
 cargo_bin=${CARGO_BIN:-cargo}
 bin_dir="$install_root/bin"
 canonical="$bin_dir/yupana"
+# Compatibility: preserve the pre-rename command as a relative alias.
 legacy="$bin_dir/hank"
 # An install is short-lived but a release build is large: use disk cache, not TMPDIR.
 build_root=${YUPANA_INSTALL_BUILD_ROOT:-${XDG_CACHE_HOME:-$HOME/.cache}/yupana/install-builds}

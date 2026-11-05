@@ -32,10 +32,9 @@ description: >-
 #     refusing prereleases; this repo's never had one, so a prerelease release
 #     event went straight to `cargo publish`.
 #
-# AND THE STAKES HERE ARE HIGHER THAN ON QUIPU, because this crate has never
-# been published: crates.io has no `yupana` at all, only the pre-rename `hank`
-# at 0.4.0 from the archived repository. Repairing quipu's lane RESUMED an
-# established practice. Repairing this one would START one and permanently claim
+# This lane was introduced before the current crate name's first publication.
+# Repairing quipu's lane RESUMED an established practice, whereas the first
+# successful publication here would START one and permanently claim
 # a name — a crates.io version cannot be unpublished, only yanked. That decision
 # is Stiwi's (Desk CRATES card), so release.yml gates the real publish on an
 # explicit opt-in and runs in dry-run mode until it is set.

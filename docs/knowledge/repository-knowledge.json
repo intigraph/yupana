@@ -24,7 +24,7 @@
       "source": "docs/book/src/reference/cli.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Freference%2Fcli.md",
       "summary": "The CLI exposes analysis, callers, impact, export and promotion. Explicit configuration replaces discovery; deliberate graph writes require an explicit destination.",
-      "source_sha256": "89cb1ea6877badcd12d5088d1af2358acbd7bee4ec26abcdb5c9c9f18e04666b",
+      "source_sha256": "8497594f644f5fa6c51a6a5f5851f35facb1efdb86ff62106db3afb8c4be6690",
       "properties": {
         "interfaceKind": "CLI",
         "publicName": "yupana analyze, callers, impact, export, promote"
@@ -86,7 +86,7 @@
       "source": "docs/book/src/reference/cli.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Freference%2Fcli.md",
       "summary": "Read the CLI command and configuration precedence contract before running analysis or promotion.",
-      "source_sha256": "89cb1ea6877badcd12d5088d1af2358acbd7bee4ec26abcdb5c9c9f18e04666b",
+      "source_sha256": "8497594f644f5fa6c51a6a5f5851f35facb1efdb86ff62106db3afb8c4be6690",
       "properties": {
         "startHereOrder": 2
       }

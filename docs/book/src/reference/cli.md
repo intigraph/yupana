@@ -109,7 +109,7 @@ Promotion, share writes and disk-impact hook observations use the same credentia
 order: a nonempty, trimmed `QUIPU_AUTH_TOKEN`, then `QUIPU_AUTH_TOKEN_FILE`, then
 `~/.config/quipu/token`. An explicit file that is missing or unreadable does not
 fall back to another file. The former legacy token path is used only when selected
-explicitly. Obtain an accepted token from the service administrator; CABOODLE can
+explicitly. Obtain an accepted token from the service administrator; Tambo can
 install and verify it without rotating the server credential.
 
 A missing, unreadable, invalid or rejected credential disables later writes to
@@ -123,7 +123,7 @@ start a new session before retrying. Public reads remain available.
 
 `yupana status` reports the credential state and suppression state without
 printing a token or making a write. `configured_acceptance_unproven` means a
-credential was found, not that the server accepted it; use `caboodle doctor` for
+credential was found, not that the server accepted it; use `tambo doctor` for
 an authenticated verification.
 
 ## `yupana promote --dry-run` — validate without writing

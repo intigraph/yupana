@@ -6,7 +6,7 @@ use std::{
     sync::{Mutex, OnceLock},
 };
 
-const HELP: &str = "checked QUIPU_AUTH_TOKEN > QUIPU_AUTH_TOKEN_FILE > ~/.config/quipu/token; install the issued token at ~/.config/quipu/token; run caboodle doctor";
+const HELP: &str = "checked QUIPU_AUTH_TOKEN > QUIPU_AUTH_TOKEN_FILE > ~/.config/quipu/token; install the issued token at ~/.config/quipu/token; run tambo doctor";
 static DISABLED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
 #[derive(Clone, Copy)]
@@ -172,7 +172,7 @@ fn refuse(
         }
     }
     format!(
-        "Quipu writes disabled: credential {}; run caboodle doctor",
+        "Quipu writes disabled: credential {}; run tambo doctor",
         reason.name()
     )
 }
