@@ -2397,11 +2397,13 @@ tolerated. <code>tool_input</code> shape by tool:</p>
 <tr><td><code>Edit</code></td><td><code>file_path</code>, <code>old_string</code>, <code>new_string</code></td></tr>
 <tr><td><code>Write</code></td><td><code>file_path</code>, <code>content</code></td></tr>
 <tr><td><code>MultiEdit</code></td><td><code>file_path</code>, <code>edits[].old_string</code>, <code>edits[].new_string</code></td></tr>
+<tr><td><code>apply_patch</code></td><td><code>command</code> (complete native patch; see Native Codex edits)</td></tr>
 </tbody></table>
 </div>
-<p>Every field is optional as far as the parser is concerned. <strong>A payload Yupana
-cannot parse, or one naming a file in no known language, is an ALLOW</strong> — the
-guard only ever speaks up about edits it genuinely understands.</p>
+<p>For the file-oriented tools, every field is optional as far as the parser is
+concerned. A payload that does not identify a supported edit is allowed. A
+recognized <code>apply_patch</code> request must reconstruct every target before policy
+evaluation; an unknown reconstruction is denied even for an unrecognized language.</p>
 <h2 id="b-output--allow-and-deny"><a class="header" href="#b-output--allow-and-deny">(b) Output — allow and deny</a></h2>
 <p><strong>ALLOW: exit <code>0</code> with empty stdout.</strong> This is the overwhelmingly common path.</p>
 <p>The guard <strong>never emits <code>permissionDecision: "allow"</code>.</strong> That value suppresses
@@ -2445,10 +2447,10 @@ to <code>false</code>) the guard builds the call graph per invocation and will e
 on large trees — which, by the rule above, means it fails open. That is the
 intended degradation, not a bug: on big repos the guard has teeth only once the
 daemon serves it.</p>
-<h2 id="d-fail-open--non-negotiable"><a class="header" href="#d-fail-open--non-negotiable">(d) Fail open — non-negotiable</a></h2>
-<p><strong>Every failure mode allows the edit.</strong> The harness launches every crew agent
-through this hook; a guard that fails closed bricks the fleet the moment Yupana is
-unavailable.</p>
+<h2 id="d-availability-failures-fail-open"><a class="header" href="#d-availability-failures-fail-open">(d) Availability failures fail open</a></h2>
+<p>Availability failures allow the edit so an unavailable guard does not brick the
+fleet. A recognized native patch whose complete contents cannot be reconstructed
+is refused instead: the edit tool must not apply unchecked targets.</p>
 <div class="table-wrapper"><table><thead><tr><th>Failure</th><th>Result</th></tr></thead><tbody>
 <tr><td><code>yupana</code> not on <code>PATH</code></td><td>exit <code>127</code> → non-blocking error → edit proceeds</td></tr>
 <tr><td><code>yupana</code> too old to know the subcommand</td><td>exit <code>2</code> → <strong>would block</strong>; see below</td></tr>
@@ -2458,6 +2460,7 @@ unavailable.</p>
 <tr><td>quipu unprojectable, cache servable</td><td>exit <code>0</code> → <strong>rules still evaluated</strong>, verdict marked STALE</td></tr>
 <tr><td>quipu unprojectable, no servable cache</td><td>exit <code>0</code> + loud line → edit proceeds</td></tr>
 <tr><td>Policy says deny</td><td>exit <code>0</code> + deny JSON → <strong>edit blocked</strong></td></tr>
+<tr><td>Recognized <code>apply_patch</code> cannot be reconstructed</td><td>exit <code>0</code> + deny JSON → <strong>entire patch blocked</strong></td></tr>
 </tbody></table>
 </div>
 <h3 id="failing-open-is-a-last-resort-not-the-first-response-to-a-slow-quipu"><a class="header" href="#failing-open-is-a-last-resort-not-the-first-response-to-a-slow-quipu">Failing open is a LAST resort, not the first response to a slow quipu</a></h3>
@@ -2516,7 +2519,7 @@ guard decisions omit both fields. Path recording remains opt-in.</p>
 on one session-attributed action; it must not join records by agent and timestamp
 or interpret a missing field in older traffic as public exposure.</p>
 <h3 id="invoke-it-so-version-skew-cannot-block-the-fleet"><a class="header" href="#invoke-it-so-version-skew-cannot-block-the-fleet">Invoke it so version skew cannot block the fleet</a></h3>
-<p>Every row above fails open except one, and that one is not exotic: it is what
+<p>The process-error rows above fail open except version skew, which is what
 you get by rolling the hook out ahead of the binary, which is the normal
 ordering of a deploy. Invoke the guard through this wrapper rather than bare:</p>
 <pre><code class="language-sh">out=$(yupana hook pre-edit 2&gt;/dev/null) || exit 0
@@ -2797,9 +2800,17 @@ destination scopes. No files are written by the guard.</p>
 <p>The parser reconstructs exact-context patches for verification while passing only
 added lines to introduced-text rules. Unchanged context is not newly introduced
 text. Missing or ambiguous anchors, fuzzy matches and unsupported patch syntax
-produce an explicit UNKNOWN metric and fail-open advisory, not a clean allow.
-This preserves the hook's existing availability contract; it does not certify
-coverage for edits performed through arbitrary shell commands.</p>
+produce an explicit UNKNOWN metric with <code>response: denied</code> and refuse the entire
+request through <code>permissionDecision: deny</code> (exit 0). No earlier target in a
+multi-file patch is admitted when a later target cannot be reconstructed.
+Denials are emitted on every invocation; session advisory deduplication cannot
+hide them. Resubmit supported syntax with unique, ordered context for every hunk.
+The parser's uncertainty does not establish that the native edit tool would
+reject the patch itself.</p>
+<p>This reconstruction boundary is separate from the availability contract above:
+an unavailable binary, config error or timeout still follows its existing
+fail-open behavior. It does not certify coverage for edits performed through
+arbitrary shell commands.</p>
 <p><code>guard</code> records in the metrics spool measure edit evaluations. Signed
 <code>landing-*</code> certifications measure push/merge evaluations: the two populations
 must not be combined when assessing a landing-policy soak.</p>
