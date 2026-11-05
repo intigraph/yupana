@@ -251,5 +251,11 @@ for line in sys.stdin:
                     self.assertEqual(Path(directory).stat().st_mode & 0o777, 0o700)
 
 
+def load_tests(loader, tests, pattern):
+    provider_tests = load("repository_embedding_controls", ROOT / "test-repository-share-embedding.py")
+    tests.addTests(loader.loadTestsFromModule(provider_tests))
+    return tests
+
+
 if __name__ == "__main__":
     unittest.main()
