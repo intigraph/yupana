@@ -40,15 +40,7 @@ pub struct ProjectedPolicy {
     pub hosted_at_layer: Option<crate::hosting::HostingLayer>,
 }
 
-/// Fetch and decode the governed text-rule catalogue over HTTP.
-pub fn fetch_text_rules(endpoint: &str) -> Result<Vec<TextRule>> {
-    text_fetch::fetch(endpoint)
-}
-
-/// Read only governed commit-scheduler rules through the normal decoder.
-pub fn fetch_commit_rules(endpoint: &str) -> Result<Vec<TextRule>> {
-    text_fetch::fetch_commit_rules(endpoint)
-}
+pub use text_fetch::{fetch as fetch_text_rules, fetch_commit_rules};
 
 /// POST a SPARQL query to quipu's `/query`, returning the raw body.
 pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {

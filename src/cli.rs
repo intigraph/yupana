@@ -1,7 +1,4 @@
 //! The `yupana` command-line interface.
-//! Live commands include analysis, references, calls/impact, dataflow, export,
-//! watching, hooks, verification, and source-bound offline SCIP navigation.
-//! `promote` is live behind the `quipu` feature (`docs/yupana-spec.md`).
 use std::io;
 use std::path::{Path, PathBuf};
 

@@ -150,14 +150,15 @@ fn expand(subject: &Value, properties: &[Value]) -> Result<Vec<Value>> {
     Ok(rows)
 }
 
-pub(super) fn fetch(endpoint: &str) -> Result<Vec<TextRule>> {
+/// Fetch and decode the governed text-rule catalogue over HTTP.
+pub fn fetch(endpoint: &str) -> Result<Vec<TextRule>> {
     let members = read(endpoint, MEMBERS)?;
     fetch_members(endpoint, &members)
 }
 
 /// A commit boundary needs only its class, not every edit policy in the store.
 /// Keep exact subject decoding/validation identical to the normal projection.
-pub(super) fn fetch_commit_rules(endpoint: &str) -> Result<Vec<TextRule>> {
+pub fn fetch_commit_rules(endpoint: &str) -> Result<Vec<TextRule>> {
     let members = read(
         endpoint,
         "PREFIX aegis: <http://aegis.gastown.local/ontology/>\n\
