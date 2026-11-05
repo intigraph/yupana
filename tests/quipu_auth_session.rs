@@ -59,7 +59,7 @@ impl Server {
                         }
                     }
                 }
-                let knot = bytes.starts_with(b"POST /knot ");
+                let knot = bytes.starts_with(b"POST /update?");
                 if knot {
                     k.fetch_add(1, Ordering::SeqCst);
                     // Only fixture session attribution is retained, never auth
@@ -77,9 +77,9 @@ impl Server {
                 let (status, body) = if knot && rejected {
                     ("401 Unauthorized", "fixture-rejected-secret")
                 } else if knot {
-                    ("200 OK", "{\"count\":1,\"tx_id\":1}")
+                    ("200 OK", "{\"asserted\":8,\"retracted\":0,\"tx\":1}")
                 } else {
-                    ("200 OK", "{\"count\":0,\"rows\":[]}")
+                    ("200 OK", "{\"results\":{\"bindings\":[]}}")
                 };
                 write!(connection, "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
             }

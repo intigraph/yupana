@@ -77,7 +77,25 @@ pub(super) fn observe_and_check(payload: &str, command: &str) -> Outcome {
             )
         }
     };
-    let Some(predicted) = crate::project_disk::p90(&samples) else {
+    let class_bound = match crate::project_disk_summary::fetch_bound(
+        &config.quipu.endpoint,
+        &signature,
+        &reading.filesystem,
+    ) {
+        Ok(value) => value,
+        Err(error) => {
+            return super::unknown_quietly(
+                UNKNOWN_KIND,
+                with_measurement(
+                    format!("summary query failed ({error})"),
+                    measurement.as_deref(),
+                ),
+            )
+        }
+    };
+    // Retain the old exact-signature p90 floor until archive/backfill has been
+    // qualified. A class summary must never weaken that existing warning.
+    let Some(predicted) = crate::project_disk::p90(&samples).max(class_bound) else {
         return super::unknown_quietly(
             UNKNOWN_KIND,
             with_measurement(
@@ -103,7 +121,7 @@ pub(super) fn observe_and_check(payload: &str, command: &str) -> Outcome {
     );
     if u64::try_from(predicted).is_ok_and(|predicted| predicted > limit) {
         Outcome::Notify(format!(
-            "yupana (governed, not blocking): disk history predicts p90 {} across {} sample(s) for `{signature}` on {}; current headroom is {} and the 80% advisory budget is {}. Free space or choose another filesystem before running.",
+            "yupana (governed, not blocking): disk history predicts conservative bound {} ({} legacy sample(s) plus class summary) for `{signature}` on {}; current headroom is {} and the 80% advisory budget is {}. Free space or choose another filesystem before running.",
             signed_bytes(predicted), samples.len(), reading.filesystem, bytes(available), bytes(limit)
         ))
     } else {
@@ -265,58 +283,17 @@ fn post_sample(
     delta: i64,
     session: Option<&str>,
 ) -> Result<(), String> {
-    let id = hex::encode(Sha256::digest(
-        format!(
-            "{}\0{}\0{}",
-            pending.signature, pending.filesystem, pending.observed_at
-        )
-        .as_bytes(),
-    ));
-    let turtle = format!(
-        "@prefix aegis: <http://aegis.gastown.local/ontology/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\
-         aegis:disk-impact-{id} a aegis:CommandDiskImpactObservation ; aegis:commandSignature {} ; \
-         aegis:filesystemIdentity {} ; aegis:diskDeltaBytes \"{delta}\"^^xsd:integer ; aegis:observedAt {}^^xsd:dateTime ; \
-         rdfs:label {} .",
-        serde_json::to_string(&pending.signature).map_err(|e| e.to_string())?,
-        serde_json::to_string(&pending.filesystem).map_err(|e| e.to_string())?,
-        serde_json::to_string(&pending.observed_at).map_err(|e| e.to_string())?,
-        serde_json::to_string(&format!("disk impact {}", pending.signature))
-            .map_err(|e| e.to_string())?
-    );
-    let url = format!("{}/knot", endpoint.trim_end_matches('/'));
-    let mut request = crate::quipu_label::json_post(&url, crate::quipu_label::HOOK);
-    // The harness supplies session_id in stdin even when its hook process has
-    // no session environment variable. Reuse that observed value, not a guess.
-    request = crate::quipu_provenance::with_hook_session(request, session);
-    let token = crate::quipu_auth::require_for_hook(endpoint, session)?;
-    request = request.set("Authorization", &format!("Bearer {token}"));
-    let body =
-        serde_json::json!({"turtle": turtle, "actor": "yupana", "source": "command-disk-impact"})
-            .to_string();
-    let response = request
-        .timeout(std::time::Duration::from_secs(3))
-        .send_string(&body)
-        .map_err(|error| match error {
-            ureq::Error::Status(401, _) => crate::quipu_auth::rejected_for_hook(endpoint, session),
-            _ => error.to_string(),
-        })?;
-    let response_body = response
-        .into_string()
-        .map_err(|e| format!("cannot read Quipu knot response: {e}"))?;
-    let result: serde_json::Value = serde_json::from_str(&response_body)
-        .map_err(|e| format!("invalid Quipu knot response: {e}"))?;
-    if result.get("conforms").and_then(serde_json::Value::as_bool) == Some(false) {
-        return Err(format!("Quipu rejected observation: {result}"));
-    }
-    let count = result
-        .get("count")
-        .and_then(serde_json::Value::as_u64)
-        .unwrap_or(0);
-    let tx_id = result.get("tx_id").and_then(serde_json::Value::as_u64);
-    if count == 0 && tx_id != Some(0) {
-        return Err(format!("Quipu wrote zero observation triples: {result}"));
-    }
-    Ok(())
+    let state = state_path(session.unwrap_or("anonymous")).ok_or("no disk state directory")?;
+    let directory = state.parent().ok_or("no disk state directory")?;
+    crate::project_disk_summary::record(
+        endpoint,
+        &pending.signature,
+        &pending.filesystem,
+        delta,
+        &pending.observed_at,
+        session,
+        directory,
+    )
 }
 
 fn headroom_override() -> Option<u64> {

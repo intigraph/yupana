@@ -457,24 +457,40 @@ arrives in the same harness session. This is intentionally a filesystem delta,
 not a directory walk: hardlinks, deleted-open files, caches outside the working
 tree, root, and tmpfs must remain visible as different budgets.
 
-History is keyed by the governed
-`binary:subcommand|repo:<class>|cwd:<class>` signature and an opaque
-`root|tmpfs|mount:<hash>` filesystem identity. Raw argv, paths, devices, and
-mount points are never written to Quipu. Deltas are signed: positive values
-consume space and negative values free it. The guard projects the most recent
-100 samples and uses their nearest-rank p90. If p90 exceeds 80% of current headroom, it emits a
-`governed, not blocking` system message. There is no enforcement branch in this
-first slice.
+New history is keyed by an opaque `root|tmpfs|mount:<hash>` filesystem
+identity and one of 37 fixed command classes, such as `cargo:build`. Repository,
+cwd and arguments cannot create new summary subjects. One
+`CommandDiskImpactSummary` per pair holds a run count, exact lifetime maximum,
+bounded signed power-of-two histogram, conservative p90 upper bound and last
+seen time. Raw argv, paths, devices and mount points are not graph properties.
+Deltas are signed: positive values consume space and negative values free it.
 
-No history is **UNKNOWN**, never safe: the matching command is allowed without
-pane output, while a `disk_guard_unknown` spool event records why no verdict was
-available. Failed history writes or queries also retain their reasons in the
-spool. Credential failures add a `quipu_auth_failure` event and disable later
-writes for the session; public reads remain available. A governed headroom warning
-still speaks. Unrelated commands do not pay for a Quipu round trip and remain
-silent. The graph vocabulary is governed by
-`CommandDiskImpactObservationShape`; deployments must accept that shape before
-expecting samples to accrue.
+Summary writes use a subject-bound conditional update comparing the complete
+prior state. Only a confirmed zero-change contention receipt permits another
+attempt, at most three, under the shared hook deadline. A timeout, ambiguous
+receipt or transport failure never retries a potentially committed write. A
+local 64 KiB JSONL ring retains bounded diagnostic samples without per-run graph
+subjects. It is not a replay queue; an exclusive lock is never stolen.
+
+During transition, the projection keeps the larger of the old exact-signature
+p90 (latest 100 samples) and the class lifetime maximum. This deliberately
+conservative bound prevents pooling repositories from weakening an existing
+warning. It can overestimate a smaller command's disk cost; the histogram's
+lifetime p90 is not a recent-window statistic. Above 80% of current headroom,
+the hook emits a `governed, not blocking` message. It does not enforce a stop.
+
+No history is **UNKNOWN**, never safe: the command is allowed without pane
+output while `disk_guard_unknown` records why no verdict was available. Failed
+writes or queries retain their reasons. Credential failures add a
+`quipu_auth_failure` event and disable later writes for the session; public
+reads remain available. Unrelated commands do not pay for a graph round trip.
+The deployment must accept `CommandDiskImpactSummaryShape` before expecting
+summary writes. A rejected summary does not fall back to raw graph writes.
+
+Existing `CommandDiskImpactObservation` nodes and their legacy shape remain
+intact. No automatic cleanup or historical backfill is included. Archive,
+backfill and removal require a separately approved migration with snapshot
+identity, exact counts, checksums, projection comparison and rollback proof.
 
 ## What the guard checks
 

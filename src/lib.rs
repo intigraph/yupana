@@ -104,6 +104,8 @@ pub mod project_decode;
 /// Command disk-impact history and the advise-only pre-execution guard.
 #[cfg(feature = "quipu")]
 pub mod project_disk;
+#[cfg(feature = "quipu")]
+pub mod project_disk_summary;
 /// Repo-exposure resolution, split from `project` for size and gated with it.
 #[cfg(feature = "quipu")]
 pub mod project_exposure;
