@@ -37,7 +37,7 @@ impl crate::cli::Cli {
                 // quietly upgrading it to a snapshot replace: promotion now
                 // requires the caller to choose, and silently making an export
                 // destructive would be the larger surprise.
-                self.promote(path, "HEAD", to, repo, false, false, false, None)
+                self.promote(path, "HEAD", to, None, repo, false, false, false, None)
             }
             None => export(path, repo),
         }

@@ -135,7 +135,8 @@ fn might_consume_disk(command: &str) -> bool {
         "cp",
         "rsync",
         "tar",
-        "caboodle",
+        "tambo",
+        "caboodle", // Compatibility: recognize commands issued by older stack installers.
     ]
     .iter()
     .any(|word| {
@@ -343,6 +344,9 @@ mod tests {
     fn routing_is_narrow_and_noop_is_quiet() {
         assert!(might_consume_disk("cargo build --release"));
         assert!(might_consume_disk("fallocate -l 1G image"));
+        assert!(might_consume_disk("tambo apply plan.toml"));
+        assert!(might_consume_disk("caboodle apply plan.toml")); // Legacy command compatibility.
+        assert!(!might_consume_disk("echo tambo_notes"));
         assert!(!might_consume_disk("true"));
         assert!(!might_consume_disk("git status"));
     }

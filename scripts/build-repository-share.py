@@ -21,7 +21,7 @@ def isolated_environment(private):
     """Native workers have private configuration and no ambient credentials."""
     home = Path(private) / "worker-home"
     home.mkdir(mode=0o700, exist_ok=True)
-    env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL", "SYSTEMROOT", "WINDIR") if key in os.environ}
+    env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL", "SYSTEMROOT", "WINDIR", "ORT_DYLIB_PATH") if key in os.environ}
     env["HOME"] = str(home.resolve())
     for key, name in (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"), ("XDG_CACHE_HOME", "cache"), ("XDG_STATE_HOME", "state")):
         directory = home / name
@@ -30,6 +30,16 @@ def isolated_environment(private):
     env["GIT_CONFIG_NOSYSTEM"] = "1"
     env["GIT_CONFIG_GLOBAL"] = os.devnull
     return env
+
+
+
+def receiver_shapes(tooling):
+    """Rules belong to the rule-set loader, not the receiver's SHACL catalogue."""
+    shapes = sorted(path for path in (Path(tooling) / "shapes").glob("*.ttl")
+                    if not path.name.endswith(".rules.ttl"))
+    if not shapes:
+        raise ValueError("verified engine source has no receiver shapes")
+    return shapes
 
 
 def command(args, *, env=None, cwd=None):
@@ -289,6 +299,16 @@ def build(revision, source, tooling, binary, bobbin, output):
         raise ValueError("release lacks a supported public corpus positive control")
     private = output.parent / "build-private"
     private.mkdir(mode=0o700)
+    # The provider belongs to this private working directory, not ambient HOME.
+    import importlib.util
+
+    provider_spec = importlib.util.spec_from_file_location(
+        "repository_share_embedding", Path(__file__).with_name("repository_share_embedding.py")
+    )
+    provider_contract = importlib.util.module_from_spec(provider_spec)
+    provider_spec.loader.exec_module(provider_contract)
+    expected_provider = provider_contract.configure(private)
+
 
     def run(args, *, env=None):
         return command(args, env=env, cwd=private)
@@ -323,6 +343,7 @@ entities = false
 model = "all-MiniLM-L6-v2"
 batch_size = 64
 """)
+    provider_contract.configure_indexer(index, private, expected_provider)
     run([bobbin, "index", index, "--source", corpus, "--repo", slug, "--force", "--skip-calibrate", "--json"])
     database = private / "producer.db"
     if not index_database.is_file():
@@ -330,10 +351,7 @@ batch_size = 64
     with sqlite3.connect("file:" + str(index_database) + "?mode=ro", uri=True) as original:
         with sqlite3.connect(database) as target:
             original.backup(target)
-    shapes = sorted((tooling / "shapes").glob("*.ttl"))
-    if not shapes:
-        raise ValueError("verified engine source has no receiver shapes")
-    for shape in shapes:
+    for shape in receiver_shapes(tooling):
         run([binary, "shapes", "load", shape.stem, shape, "--db", database])
     run(
         [
@@ -379,6 +397,7 @@ batch_size = 64
     run([binary, "share", "--construct", query, "--turtle", "--output", stage, "--db", database])
     if not (stage / "shapes.ttl").is_file() or (stage / "shapes.ttl").stat().st_size == 0:
         raise ValueError("repository share omitted receiver shapes")
+    provider_contract.verify_manifest(stage, expected_provider)
     verify_former_names(stage / "export.nt")
     receiver = private / "receiver.db"
     run([binary, "shapes", "load", "repository-share", stage / "shapes.ttl", "--db", receiver])

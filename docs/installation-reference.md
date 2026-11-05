@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/scbrown/yupana/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
   <a href="https://github.com/scbrown/yupana/actions/workflows/ci.yml"><img src="https://github.com/scbrown/yupana/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <a href="https://github.com/scbrown/caboodle"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the quipu stack"/></a>
+  <a href="https://github.com/intigraph/tambo"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the quipu stack"/></a>
 </p>
 
 **Yupana reads a codebase and answers structural questions about it: what calls
@@ -217,7 +217,7 @@ the release and in the source command above, adds the rest.
 
 ## 🧺 The stack
 
-Caboodle installs these together and proves each one works; every tool also stands alone.
+Tambo installs these together and proves each one works; every tool also stands alone.
 
 ## Contributing
 

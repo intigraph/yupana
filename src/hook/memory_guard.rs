@@ -121,13 +121,16 @@ pub(super) fn check(payload: &str, command: &str) -> Outcome {
 
 #[cfg(feature = "quipu")]
 fn might_be_memory_heavy(command: &str) -> bool {
-    ["cargo", "rustc", "cc", "gcc", "clang", "ld", "caboodle"]
-        .iter()
-        .any(|word| {
-            command
-                .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-                .any(|part| part == *word)
-        })
+    // Compatibility: older stack installers can still invoke the legacy command.
+    [
+        "cargo", "rustc", "cc", "gcc", "clang", "ld", "tambo", "caboodle",
+    ]
+    .iter()
+    .any(|word| {
+        command
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .any(|part| part == *word)
+    })
 }
 
 #[cfg(not(feature = "quipu"))]
@@ -229,6 +232,9 @@ mod tests {
         assert!(!might_be_memory_heavy("git status --short"));
         assert!(might_be_memory_heavy("nice -n 10 cargo test"));
         assert!(might_be_memory_heavy("/usr/bin/rustc --crate-name demo"));
+        assert!(might_be_memory_heavy("tambo apply plan.toml"));
+        assert!(might_be_memory_heavy("caboodle apply plan.toml")); // Legacy command compatibility.
+        assert!(!might_be_memory_heavy("echo tambo_notes"));
     }
 
     #[cfg(feature = "quipu")]

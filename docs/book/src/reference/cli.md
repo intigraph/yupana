@@ -87,13 +87,29 @@ The MCP `yupana_promote` tool keeps its own fallback to the configured endpoint:
 there the target comes from a server an operator deliberately started and pointed
 somewhere, not from whatever config happens to be ambient in an agent's shell.
 
+### Named graph destinations
+
+`promote --to <url> --graph <iri>` selects an existing committed named graph.
+Omitting `--graph` preserves the ROOT destination. Empty, relative and malformed
+graph IRIs refuse before any HTTP request; an unknown or non-writable graph is
+refused by Quipu. This option does not create graphs or authorize a write without
+`--to`.
+
+Graph selection applies to full snapshot replacement, `--subset` and `--append`.
+It changes only the request's destination: entity IRIs, repository identity,
+snapshot keys, authored valid time and provenance retain their existing meaning.
+`--dry-run` still sends nothing. Selecting a graph does not enable per-branch
+modeling, migrate an existing snapshot or configure separate writable stores.
+Migration and the readers' datasets must be qualified before changing a scheduled
+producer's target. Existing library and MCP callers that omit a graph keep ROOT.
+
 ### Quipu write credentials
 
 Promotion, share writes and disk-impact hook observations use the same credential
 order: a nonempty, trimmed `QUIPU_AUTH_TOKEN`, then `QUIPU_AUTH_TOKEN_FILE`, then
 `~/.config/quipu/token`. An explicit file that is missing or unreadable does not
 fall back to another file. The former legacy token path is used only when selected
-explicitly. Obtain an accepted token from the service administrator; CABOODLE can
+explicitly. Obtain an accepted token from the service administrator; Tambo can
 install and verify it without rotating the server credential.
 
 A missing, unreadable, invalid or rejected credential disables later writes to
@@ -107,7 +123,7 @@ start a new session before retrying. Public reads remain available.
 
 `yupana status` reports the credential state and suppression state without
 printing a token or making a write. `configured_acceptance_unproven` means a
-credential was found, not that the server accepted it; use `caboodle doctor` for
+credential was found, not that the server accepted it; use `tambo doctor` for
 an authenticated verification.
 
 ## `yupana promote --dry-run` — validate without writing
