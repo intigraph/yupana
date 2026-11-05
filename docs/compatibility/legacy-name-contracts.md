@@ -29,7 +29,6 @@ structural tool name as a whole word. New current-product uses are not allowed.
 | `tests/install_local.py` | Tests existing alias upgrade, atomic replacement and failure preservation. |
 | `tests/install_release.py` | Tests archive alias validation and installed alias resolution. |
 
-The composite publication action still contains a former-name historical
-comment. Its separate workflow-authorized cleanup is outstanding; it is not an
-allowed contract. Full native crate CI and public default-branch scans remain
-required for acceptance.
+The composite publication action's former-name historical comment is removed
+by a separate workflow commit. Full native crate CI and public default-branch
+scans remain required for acceptance.
