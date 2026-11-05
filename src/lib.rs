@@ -41,9 +41,6 @@ pub mod ci_shift;
 pub mod cli;
 mod cli_cmds;
 mod cli_dataflow;
-#[cfg(feature = "quipu")]
-pub mod commit_check;
-pub mod commit_schedule;
 pub mod community;
 pub mod config;
 pub mod constraint;

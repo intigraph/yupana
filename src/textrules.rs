@@ -268,26 +268,6 @@ pub fn evaluate_in(
         .collect()
 }
 
-/// Edit-plane evaluation excludes commit-only native facts. Quoting a canonical
-/// fact in documentation is not evidence of an executable scheduler addition.
-#[must_use]
-pub fn evaluate_edit_in(
-    rules: &[TextRule],
-    introduced: &str,
-    rel: &str,
-    repo: Option<&str>,
-) -> Vec<TextViolation> {
-    rules
-        .iter()
-        .filter(|r| {
-            !r.class
-                .as_deref()
-                .is_some_and(|class| class.starts_with(crate::commit_schedule::RULE_CLASS))
-        })
-        .flat_map(|r| r.violations_in(introduced, rel, repo))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

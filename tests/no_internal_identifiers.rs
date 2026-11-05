@@ -308,11 +308,6 @@ fn the_ontology_namespace_allowance_is_still_needed_and_still_bounded() {
         // what left its provenance edges unjoinable (GH #5) — so the literal
         // has to be here or the assertion checks nothing.
         "tests/cli.rs",
-        // Commit admission fixtures and their recorded demo decode the deployed
-        // scheduler-exception catalogue predicates. Keep that actual vocabulary
-        // bounded to these exact files; a stand-in namespace tests another policy.
-        "tests/commit_check_cli.rs",
-        "docs/demos/commit-scheduler/demo.py",
         // A captured LIVE `/query` reply for the landing catalogue. The IRIs are
         // the fixture's whole point: it exists to pin the real label x altLabel
         // cross-product the decoder has to fold, and rewriting the base would

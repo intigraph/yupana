@@ -19,8 +19,6 @@ pub(super) fn deliberate_use_name(cmd: &Commands) -> Option<&'static str> {
         // would inflate the leverage metric with a timer (aegis-l26g8x).
         #[cfg(feature = "quipu")]
         Commands::RuleTest(_) => return None,
-        #[cfg(feature = "quipu")]
-        Commands::CommitCheck(_) => return None,
         Commands::Serve { .. } => "serve",
         Commands::Daemon { .. } => "daemon",
         Commands::Analyze { .. } => "analyze",
@@ -130,8 +128,6 @@ pub(super) fn quipu_caller_kind(cmd: &Commands) -> Option<&'static str> {
         Commands::Exemplar { .. } => "yupana-cli:exemplar",
         #[cfg(feature = "quipu")]
         Commands::RuleTest(_) => "yupana-cli:rule-test",
-        #[cfg(feature = "quipu")]
-        Commands::CommitCheck(_) => "yupana-cli:commit-check",
         Commands::Changed { .. } => "yupana-cli:changed",
         Commands::Census { .. } => "yupana-cli:census",
         Commands::Export { .. } => "yupana-cli:export",

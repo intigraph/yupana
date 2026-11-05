@@ -316,7 +316,7 @@ pub(super) fn governed_check(
         .as_deref()
         .filter(|_| exempt_by_repo)
         .and_then(crate::git::origin_repo_name);
-    let text_violations = crate::textrules::evaluate_edit_in(
+    let text_violations = crate::textrules::evaluate_in(
         registry.text_rules(),
         &introduced,
         &target_rel,
