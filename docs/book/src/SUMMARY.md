@@ -31,6 +31,7 @@
 - [Resident Daemon](reference/daemon.md)
 - [Read-time Entity Legend](reference/read-legend.md)
 - [Pre-Edit Policy Guard](reference/policy-guard.md)
+- [Outbound approval guard](reference/outbound-guard.md)
   - [Replay: measuring a rule](reference/replay.md)
   - [Session trajectory advice](reference/session-trajectory.md)
 - [Golden-Path Conformance](reference/golden-path.md)
