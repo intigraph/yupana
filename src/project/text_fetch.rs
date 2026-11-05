@@ -150,31 +150,12 @@ fn expand(subject: &Value, properties: &[Value]) -> Result<Vec<Value>> {
     Ok(rows)
 }
 
-/// Fetch and decode the governed text-rule catalogue over HTTP.
-pub fn fetch(endpoint: &str) -> Result<Vec<TextRule>> {
+pub(super) fn fetch(endpoint: &str) -> Result<Vec<TextRule>> {
     let members = read(endpoint, MEMBERS)?;
-    fetch_members(endpoint, &members)
-}
-
-/// A commit boundary needs only its class, not every edit policy in the store.
-/// Keep exact subject decoding/validation identical to the normal projection.
-pub fn fetch_commit_rules(endpoint: &str) -> Result<Vec<TextRule>> {
-    let members = read(
-        endpoint,
-        "PREFIX aegis: <http://aegis.gastown.local/ontology/>\n\
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n\
-        SELECT ?s WHERE { ?s aegis:identifierClass ?class .\n\
-        ?s a/rdfs:subClassOf* aegis:TextRule .\n\
-        FILTER(STRSTARTS(STR(?class), \"commit-scheduler/v1:\")) }",
-    )?;
-    fetch_members(endpoint, &members)
-}
-
-fn fetch_members(endpoint: &str, members: &Value) -> Result<Vec<TextRule>> {
     let mut seen = HashSet::new();
     let mut selectors = HashMap::new();
     let mut bindings = Vec::new();
-    for member in rows_of(members)? {
+    for member in rows_of(&members)? {
         let subject = member.get("s").ok_or_else(|| error("missing subject"))?;
         let iri = safe_iri(subject)?;
         // IRIREF cannot contain these delimiters. Never interpolate graph data

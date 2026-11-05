@@ -5038,7 +5038,6 @@ dependencies = [
  "petgraph 0.7.1",
  "predicates",
  "protobuf",
- "quick-xml 0.38.4",
  "quipu-signing",
  "regex",
  "ring",
@@ -5071,7 +5070,6 @@ dependencies = [
  "ureq",
  "url",
  "walkdir",
- "yaml-rust2",
 ]
 
 [[package]]
