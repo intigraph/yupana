@@ -3,4 +3,5 @@
 
 # Terminal timing counts refer to the original captured bytes.
 docs/demos/ci-source-cache/output.txt -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/demos/commit-scheduler/output.log -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/demos/promote-graph/terminal.output -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

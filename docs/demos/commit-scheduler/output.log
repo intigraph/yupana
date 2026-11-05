@@ -1,0 +1,36 @@
+Script started on 2026-11-04 13:00:37-05:00 [COMMAND="python3 docs/demos/commit-scheduler/demo.py" <not executed on terminal>]
+Candidate binary SHA256: 582b7fedef3e484a036619dc2ee47b1f41741cf48898ada91122474b98c0900b
+Target: disposable Git repositories; policy: finite local fixture; no host installation.
+
+BEFORE: no scheduler commit boundary
+$ git commit -qm 'ordinary control'
+exit: 0
+$ git commit -qm 'new timer control'
+exit: 0
+
+AFTER: native commit-msg gate
+$ git commit -qm 'ordinary control'
+exit: 0
+$ git commit -qm 'new timer control'
+exit: 1
+{
+  "outcome": "refuse",
+  "reason": "scheduled work must use the governed event/reaction engine or name an open migration exception",
+  "rules": [
+    "scheduler-policy"
+  ],
+  "additions": [
+    {
+      "path": "new.timer",
+      "kind": "systemd-timer",
+      "definition": "OnCalendar=hourly\n",
+      "exception_target": "new.timer"
+    }
+  ],
+  "exception": null
+}
+Error: commit scheduler check refuse: scheduled work must use the governed event/reaction engine or name an open migration exception
+
+PASS: same timer accepted before, refused after; ordinary controls pass both.
+
+Script done on 2026-11-04 13:00:38-05:00 [COMMAND_EXIT_CODE="0"]
