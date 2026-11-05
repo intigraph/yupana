@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-05
+
+### Fixed
+
+- Preserve the pinned ONNX Runtime path for isolated repository-share receivers and exclude inference rules from SHACL validation (#213).
+
 ## [0.17.0] - 2026-11-05
 
 ### Added
