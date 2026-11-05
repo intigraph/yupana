@@ -122,13 +122,15 @@ pub(super) fn check(payload: &str, command: &str) -> Outcome {
 #[cfg(feature = "quipu")]
 fn might_be_memory_heavy(command: &str) -> bool {
     // Compatibility: older stack installers can still invoke the legacy command.
-    ["cargo", "rustc", "cc", "gcc", "clang", "ld", "tambo", "caboodle"]
-        .iter()
-        .any(|word| {
-            command
-                .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-                .any(|part| part == *word)
-        })
+    [
+        "cargo", "rustc", "cc", "gcc", "clang", "ld", "tambo", "caboodle",
+    ]
+    .iter()
+    .any(|word| {
+        command
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .any(|part| part == *word)
+    })
 }
 
 #[cfg(not(feature = "quipu"))]
