@@ -64,6 +64,28 @@ class Publication(unittest.TestCase):
         self.proof_path = self.archive.with_name(self.archive.name + ".provenance.json")
         self.proof_path.write_text(json.dumps(self.proof))
 
+    def test_isolated_native_workers_keep_runtime_but_drop_credentials(self):
+        runtime = str(self.root / "pinned-runtime" / "libonnxruntime.so")
+        with patch.dict(os.environ, {"ORT_DYLIB_PATH": runtime, "GH_TOKEN": "synthetic-secret",
+                                    "QUIPU_AUTH_TOKEN": "synthetic-secret",
+                                    "QUIPU_SERVER": "https://private.invalid"}):
+            environment = builder.isolated_environment(self.root)
+        self.assertEqual(environment["ORT_DYLIB_PATH"], runtime)
+        for key in ("GH_TOKEN", "QUIPU_AUTH_TOKEN", "QUIPU_SERVER"):
+            self.assertNotIn(key, environment)
+        self.assertEqual(environment["HOME"], str((self.root / "worker-home").resolve()))
+
+    def test_receiver_shapes_exclude_rule_sets_but_keep_shacl(self):
+        shapes = self.root / "tooling" / "shapes"
+        shapes.mkdir(parents=True)
+        (shapes / "aegis-class-subsumption.rules.ttl").write_text("# rules, not SHACL")
+        with self.assertRaisesRegex(ValueError, "no receiver shapes"):
+            builder.receiver_shapes(shapes.parent)
+        expected = [shapes / "a.ttl", shapes / "z.shapes.ttl"]
+        for path in reversed(expected):
+            path.write_text("# SHACL fixture")
+        self.assertEqual(builder.receiver_shapes(shapes.parent), expected)
+
     def test_deterministic_archive_and_exact_readback(self):
         self.prepare()
         other = self.root / "second.tar.gz"
