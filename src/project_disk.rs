@@ -9,6 +9,9 @@ use sha2::{Digest, Sha256};
 
 use crate::errors::{Error, Result};
 
+#[path = "project_disk_aggregate.rs"]
+pub(crate) mod aggregate;
+
 /// One historical consumption sample, in bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiskSample {
@@ -120,6 +123,39 @@ pub fn p90(samples: &[DiskSample]) -> Option<i64> {
 /// Most recent observations kept per command/filesystem pair.
 const SAMPLE_LIMIT: usize = 100;
 
+/// Disk advice distinguishes conservative class summaries from legacy p90.
+pub(crate) struct Prediction {
+    pub bytes: i64,
+    pub samples: u64,
+    pub basis: &'static str,
+}
+
+pub(crate) fn fetch_prediction(
+    endpoint: &str,
+    signature: &str,
+    filesystem: &str,
+) -> Result<Option<Prediction>> {
+    let summary = aggregate::read(endpoint, signature, filesystem).map_err(Error::Projection)?;
+    // A first class summary is not evidence that retained history was seeded.
+    // Keep the legacy floor until migration has an authoritative completion
+    // contract. Errors from either reader remain UNKNOWN, never a lower bound.
+    let samples = fetch_legacy_samples(endpoint, signature, filesystem)?;
+    let legacy = p90(&samples).map(|bytes| Prediction {
+        bytes,
+        samples: samples.len() as u64,
+        basis: "legacy signature p90",
+    });
+    Ok(match (summary, legacy) {
+        (Some((_, summary)), Some(legacy)) if legacy.bytes >= summary.maximum() => Some(legacy),
+        (Some((_, summary)), _) => Some(Prediction {
+            bytes: summary.maximum(),
+            samples: summary.count(),
+            basis: "class maximum",
+        }),
+        (None, legacy) => legacy,
+    })
+}
+
 /// Fetch recent samples for one normalized command/filesystem pair.
 ///
 /// Walked as single bound patterns and joined here: the same question as one
@@ -130,6 +166,15 @@ const SAMPLE_LIMIT: usize = 100;
 /// `SAMPLE_LIMIT` greatest subject IRIs first (the former `ORDER BY DESC(?s)`),
 /// every delta each carries.
 pub fn fetch_samples(endpoint: &str, signature: &str, filesystem: &str) -> Result<Vec<DiskSample>> {
+    fetch_legacy_samples(endpoint, signature, filesystem)
+}
+
+// Retained legacy floor during migration; old per-run subjects are read-only.
+fn fetch_legacy_samples(
+    endpoint: &str,
+    signature: &str,
+    filesystem: &str,
+) -> Result<Vec<DiskSample>> {
     use crate::sparql_steps::{hop, subjects_with};
     let mut observations = subjects_with(endpoint, "aegis:commandSignature", signature)?;
     observations.sort_unstable_by(|a, b| b.cmp(a));
