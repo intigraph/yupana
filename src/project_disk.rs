@@ -9,6 +9,9 @@ use sha2::{Digest, Sha256};
 
 use crate::errors::{Error, Result};
 
+#[path = "project_disk_aggregate.rs"]
+pub(crate) mod aggregate;
+
 /// One historical consumption sample, in bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiskSample {
@@ -120,6 +123,35 @@ pub fn p90(samples: &[DiskSample]) -> Option<i64> {
 /// Most recent observations kept per command/filesystem pair.
 const SAMPLE_LIMIT: usize = 100;
 
+/// Disk advice distinguishes conservative class summaries from legacy p90.
+pub(crate) struct Prediction {
+    pub bytes: i64,
+    pub samples: u64,
+    pub basis: &'static str,
+}
+
+pub(crate) fn fetch_prediction(
+    endpoint: &str,
+    signature: &str,
+    filesystem: &str,
+) -> Result<Option<Prediction>> {
+    if let Some((_, summary)) =
+        aggregate::read(endpoint, signature, filesystem).map_err(Error::Projection)?
+    {
+        return Ok(Some(Prediction {
+            bytes: summary.maximum(),
+            samples: summary.count(),
+            basis: "class maximum",
+        }));
+    }
+    let samples = fetch_legacy_samples(endpoint, signature, filesystem)?;
+    Ok(p90(&samples).map(|bytes| Prediction {
+        bytes,
+        samples: samples.len() as u64,
+        basis: "legacy signature p90",
+    }))
+}
+
 /// Fetch recent samples for one normalized command/filesystem pair.
 ///
 /// Walked as single bound patterns and joined here: the same question as one
@@ -130,6 +162,15 @@ const SAMPLE_LIMIT: usize = 100;
 /// `SAMPLE_LIMIT` greatest subject IRIs first (the former `ORDER BY DESC(?s)`),
 /// every delta each carries.
 pub fn fetch_samples(endpoint: &str, signature: &str, filesystem: &str) -> Result<Vec<DiskSample>> {
+    fetch_legacy_samples(endpoint, signature, filesystem)
+}
+
+// Compatibility until an aggregate exists; old per-run subjects are read-only.
+fn fetch_legacy_samples(
+    endpoint: &str,
+    signature: &str,
+    filesystem: &str,
+) -> Result<Vec<DiskSample>> {
     use crate::sparql_steps::{hop, subjects_with};
     let mut observations = subjects_with(endpoint, "aegis:commandSignature", signature)?;
     observations.sort_unstable_by(|a, b| b.cmp(a));

@@ -259,7 +259,6 @@ fn the_ontology_namespace_allowance_is_still_needed_and_still_bounded() {
         // Config drift reads and emits ConfigFile facts in the promoted ontology.
         "src/hook/config_drift.rs",
         // Disk observations are promoted into the same deployed ontology.
-        "src/hook/disk_guard.rs",
         "src/project_exposure.rs",
         // The governed LANDING catalogue query names the same deployed ontology
         // its sibling projections do: which repository declares a landing rule,

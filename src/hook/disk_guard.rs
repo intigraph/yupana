@@ -61,12 +61,24 @@ pub(super) fn observe_and_check(payload: &str, command: &str) -> Outcome {
     let measurement = finish_previous(session, &reading, &config.quipu.endpoint);
     let _ = arm(session, &signature, &reading);
 
-    let samples = match crate::project_disk::fetch_samples(
+    let prediction = match crate::project_disk::fetch_prediction(
         &config.quipu.endpoint,
         &signature,
         &reading.filesystem,
     ) {
-        Ok(samples) => samples,
+        Ok(Some(prediction)) => prediction,
+        Ok(None) => {
+            return super::unknown_quietly(
+                UNKNOWN_KIND,
+                with_measurement(
+                    format!(
+                        "no Quipu-recorded history for `{signature}` on {}",
+                        reading.filesystem
+                    ),
+                    measurement.as_deref(),
+                ),
+            )
+        }
         Err(e) => {
             return super::unknown_quietly(
                 UNKNOWN_KIND,
@@ -77,18 +89,7 @@ pub(super) fn observe_and_check(payload: &str, command: &str) -> Outcome {
             )
         }
     };
-    let Some(predicted) = crate::project_disk::p90(&samples) else {
-        return super::unknown_quietly(
-            UNKNOWN_KIND,
-            with_measurement(
-                format!(
-                    "no Quipu-recorded history for `{signature}` on {}",
-                    reading.filesystem
-                ),
-                measurement.as_deref(),
-            ),
-        );
-    };
+    let predicted = prediction.bytes;
     let available = headroom_override().unwrap_or(reading.available_bytes);
     let limit = available.saturating_mul(WARN_HEADROOM_NUMERATOR) / WARN_HEADROOM_DENOMINATOR;
     crate::metrics::emit(
@@ -96,15 +97,16 @@ pub(super) fn observe_and_check(payload: &str, command: &str) -> Outcome {
         &[
             ("signature", signature.clone().into()),
             ("filesystem", reading.filesystem.clone().into()),
-            ("samples", samples.len().into()),
+            ("samples", prediction.samples.into()),
+            ("basis", prediction.basis.into()),
             ("predicted_bytes", predicted.into()),
             ("available_bytes", available.into()),
         ],
     );
     if u64::try_from(predicted).is_ok_and(|predicted| predicted > limit) {
         Outcome::Notify(format!(
-            "yupana (governed, not blocking): disk history predicts p90 {} across {} sample(s) for `{signature}` on {}; current headroom is {} and the 80% advisory budget is {}. Free space or choose another filesystem before running.",
-            signed_bytes(predicted), samples.len(), reading.filesystem, bytes(available), bytes(limit)
+            "yupana (governed, not blocking): disk history predicts {} {} across {} observation(s) for `{signature}` on {}; current headroom is {} and the 80% advisory budget is {}. Free space or choose another filesystem before running.",
+            prediction.basis, signed_bytes(predicted), prediction.samples, reading.filesystem, bytes(available), bytes(limit)
         ))
     } else {
         Outcome::Allow
@@ -265,58 +267,14 @@ fn post_sample(
     delta: i64,
     session: Option<&str>,
 ) -> Result<(), String> {
-    let id = hex::encode(Sha256::digest(
-        format!(
-            "{}\0{}\0{}",
-            pending.signature, pending.filesystem, pending.observed_at
-        )
-        .as_bytes(),
-    ));
-    let turtle = format!(
-        "@prefix aegis: <http://aegis.gastown.local/ontology/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\
-         aegis:disk-impact-{id} a aegis:CommandDiskImpactObservation ; aegis:commandSignature {} ; \
-         aegis:filesystemIdentity {} ; aegis:diskDeltaBytes \"{delta}\"^^xsd:integer ; aegis:observedAt {}^^xsd:dateTime ; \
-         rdfs:label {} .",
-        serde_json::to_string(&pending.signature).map_err(|e| e.to_string())?,
-        serde_json::to_string(&pending.filesystem).map_err(|e| e.to_string())?,
-        serde_json::to_string(&pending.observed_at).map_err(|e| e.to_string())?,
-        serde_json::to_string(&format!("disk impact {}", pending.signature))
-            .map_err(|e| e.to_string())?
-    );
-    let url = format!("{}/knot", endpoint.trim_end_matches('/'));
-    let mut request = crate::quipu_label::json_post(&url, crate::quipu_label::HOOK);
-    // The harness supplies session_id in stdin even when its hook process has
-    // no session environment variable. Reuse that observed value, not a guess.
-    request = crate::quipu_provenance::with_hook_session(request, session);
-    let token = crate::quipu_auth::require_for_hook(endpoint, session)?;
-    request = request.set("Authorization", &format!("Bearer {token}"));
-    let body =
-        serde_json::json!({"turtle": turtle, "actor": "yupana", "source": "command-disk-impact"})
-            .to_string();
-    let response = request
-        .timeout(std::time::Duration::from_secs(3))
-        .send_string(&body)
-        .map_err(|error| match error {
-            ureq::Error::Status(401, _) => crate::quipu_auth::rejected_for_hook(endpoint, session),
-            _ => error.to_string(),
-        })?;
-    let response_body = response
-        .into_string()
-        .map_err(|e| format!("cannot read Quipu knot response: {e}"))?;
-    let result: serde_json::Value = serde_json::from_str(&response_body)
-        .map_err(|e| format!("invalid Quipu knot response: {e}"))?;
-    if result.get("conforms").and_then(serde_json::Value::as_bool) == Some(false) {
-        return Err(format!("Quipu rejected observation: {result}"));
-    }
-    let count = result
-        .get("count")
-        .and_then(serde_json::Value::as_u64)
-        .unwrap_or(0);
-    let tx_id = result.get("tx_id").and_then(serde_json::Value::as_u64);
-    if count == 0 && tx_id != Some(0) {
-        return Err(format!("Quipu wrote zero observation triples: {result}"));
-    }
-    Ok(())
+    crate::project_disk::aggregate::record(
+        endpoint,
+        &pending.signature,
+        &pending.filesystem,
+        &pending.observed_at,
+        delta,
+        session,
+    )
 }
 
 fn headroom_override() -> Option<u64> {

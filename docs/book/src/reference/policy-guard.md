@@ -457,14 +457,27 @@ arrives in the same harness session. This is intentionally a filesystem delta,
 not a directory walk: hardlinks, deleted-open files, caches outside the working
 tree, root, and tmpfs must remain visible as different budgets.
 
-History is keyed by the governed
-`binary:subcommand|repo:<class>|cwd:<class>` signature and an opaque
-`root|tmpfs|mount:<hash>` filesystem identity. Raw argv, paths, devices, and
-mount points are never written to Quipu. Deltas are signed: positive values
-consume space and negative values free it. The guard projects the most recent
-100 samples and uses their nearest-rank p90. If p90 exceeds 80% of current headroom, it emits a
-`governed, not blocking` system message. There is no enforcement branch in this
-first slice.
+New history uses one stable graph subject per finite command class (such as
+`cargo:build` or `npm:install`) and opaque `root|tmpfs|mount:<hash>` filesystem
+identity. Repository/cwd names and arbitrary operands never enter that key;
+unknown operands map to fixed `other` classes. Raw argv, paths, devices and
+mount points are not written. Deltas are signed: positive consumes space and
+negative frees it.
+
+The subject holds a cumulative run count, exact maximum, last-seen time and a
+fixed 66-bucket histogram. Approximate p90/p95 values are conservative bucket
+upper bounds; no raw per-run sample list is retained. A guarded atomic update
+replaces the coherent summary. Conflicts have bounded retries; authentication
+refusals do not retry, and ambiguous writes require readback before success.
+
+For advice, the guard uses the exact class maximum so pooling repositories
+cannot lower the observed bound. Until a class summary exists it reads the
+legacy signature's latest 100 samples and uses their nearest-rank p90. The
+message states which basis it used. If the prediction exceeds 80% of current
+headroom it emits a `governed, not blocking` message; there is no enforcement
+branch. A historical maximum can overestimate later runs, so this is explicitly
+conservative advice. Historical raw-node migration is a separate operation and
+is never performed by the hook.
 
 No history is **UNKNOWN**, never safe: the matching command is allowed without
 pane output, while a `disk_guard_unknown` spool event records why no verdict was

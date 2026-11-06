@@ -12,9 +12,10 @@ use std::{
 
 struct Server {
     address: std::net::SocketAddr,
-    knots: Arc<AtomicUsize>,
+    writes: Arc<AtomicUsize>,
     queries: Arc<AtomicUsize>,
     sessions: Arc<Mutex<Vec<Option<String>>>>,
+    subjects: Arc<Mutex<Vec<String>>>,
     stop: Arc<AtomicBool>,
     thread: Option<std::thread::JoinHandle<()>>,
 }
@@ -22,12 +23,14 @@ impl Server {
     fn new(rejected: bool) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
-        let knots = Arc::new(AtomicUsize::new(0));
+        let writes = Arc::new(AtomicUsize::new(0));
         let queries = Arc::new(AtomicUsize::new(0));
         let stop = Arc::new(AtomicBool::new(false));
         let sessions = Arc::new(Mutex::new(Vec::new()));
         let recorded_sessions = sessions.clone();
-        let (k, q, stopped) = (knots.clone(), queries.clone(), stop.clone());
+        let subjects = Arc::new(Mutex::new(Vec::new()));
+        let recorded_subjects = subjects.clone();
+        let (k, q, stopped) = (writes.clone(), queries.clone(), stop.clone());
         let thread = std::thread::spawn(move || {
             for connection in listener.incoming() {
                 if stopped.load(Ordering::SeqCst) {
@@ -59,9 +62,26 @@ impl Server {
                         }
                     }
                 }
-                let knot = bytes.starts_with(b"POST /knot ");
-                if knot {
+                assert!(
+                    !bytes.starts_with(b"POST /knot "),
+                    "per-run writes must stay retired"
+                );
+                let update = bytes.starts_with(b"POST /update?");
+                if update {
                     k.fetch_add(1, Ordering::SeqCst);
+                    let request = String::from_utf8_lossy(&bytes);
+                    assert!(request.contains("application/sparql-update"));
+                    assert!(request.contains("aggregateState"));
+                    assert!(request.contains("disk-impact-class-"));
+                    let subject = request
+                        .split("disk-impact-class-")
+                        .nth(1)
+                        .unwrap()
+                        .chars()
+                        .take_while(char::is_ascii_hexdigit)
+                        .collect::<String>();
+                    assert_eq!(subject.len(), 64);
+                    recorded_subjects.lock().unwrap().push(subject);
                     // Only fixture session attribution is retained, never auth
                     // headers or the observation body.
                     let headers = String::from_utf8_lossy(&bytes);
@@ -74,21 +94,22 @@ impl Server {
                 } else {
                     q.fetch_add(1, Ordering::SeqCst);
                 }
-                let (status, body) = if knot && rejected {
+                let (status, body) = if update && rejected {
                     ("401 Unauthorized", "fixture-rejected-secret")
-                } else if knot {
-                    ("200 OK", "{\"count\":1,\"tx_id\":1}")
+                } else if update {
+                    ("200 OK", "{\"asserted\":10,\"retracted\":0,\"tx\":1}")
                 } else {
-                    ("200 OK", "{\"count\":0,\"rows\":[]}")
+                    ("200 OK", "{\"results\":{\"bindings\":[]}}")
                 };
                 write!(connection, "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
             }
         });
         Self {
             address,
-            knots,
+            writes,
             queries,
             sessions,
+            subjects,
             stop,
             thread: Some(thread),
         }
@@ -180,7 +201,7 @@ fn hook_stdin_session_reaches_the_write_without_environment_session() {
     for _ in 0..2 {
         hook(home.path(), root.path(), "payload-only-session", None);
     }
-    assert_eq!(server.knots.load(Ordering::SeqCst), 1);
+    assert_eq!(server.writes.load(Ordering::SeqCst), 1);
     assert_eq!(
         *server.sessions.lock().unwrap(),
         vec![Some("payload-only-session".into())]
@@ -204,7 +225,7 @@ fn rejected_auth_is_silent_counted_once_and_survives_fresh_hook_processes() {
     for _ in 0..4 {
         notices.push_str(&hook(home.path(), root.path(), "session-one", None));
     }
-    assert_eq!(server.knots.load(Ordering::SeqCst), 1);
+    assert_eq!(server.writes.load(Ordering::SeqCst), 1);
     assert!(
         notices.is_empty(),
         "credential failures belong in the spool"
@@ -223,7 +244,7 @@ fn rejected_auth_is_silent_counted_once_and_survives_fresh_hook_processes() {
     hook(home.path(), root.path(), "session-two", None);
     hook(home.path(), root.path(), "session-two", None);
     assert_eq!(
-        server.knots.load(Ordering::SeqCst),
+        server.writes.load(Ordering::SeqCst),
         2,
         "another session is independent"
     );
@@ -232,7 +253,7 @@ fn rejected_auth_is_silent_counted_once_and_survives_fresh_hook_processes() {
     hook(home.path(), root.path(), "session-one", None);
     hook(home.path(), root.path(), "session-one", None);
     assert_eq!(
-        another.knots.load(Ordering::SeqCst),
+        another.writes.load(Ordering::SeqCst),
         1,
         "another endpoint is independent"
     );
@@ -260,7 +281,7 @@ fn missing_explicit_file_never_falls_back_or_attempts_a_write() {
             Some(&missing),
         ));
     }
-    assert_eq!(server.knots.load(Ordering::SeqCst), 0);
+    assert_eq!(server.writes.load(Ordering::SeqCst), 0);
     assert!(
         notices.is_empty(),
         "missing credentials belong in the spool"
@@ -272,8 +293,37 @@ fn missing_explicit_file_never_falls_back_or_attempts_a_write() {
         hook(home.path(), root.path(), "valid-session", None);
     }
     assert_eq!(
-        server.knots.load(Ordering::SeqCst),
+        server.writes.load(Ordering::SeqCst),
         2,
         "positive canonical-file control"
+    );
+}
+
+#[test]
+fn aggregate_hook_reuses_one_subject_across_real_processes() {
+    let root = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let server = Server::new(false);
+    setup(root.path(), &server);
+    std::fs::create_dir_all(home.path().join(".config/quipu")).unwrap();
+    std::fs::write(
+        home.path().join(".config/quipu/token"),
+        "fixture-good-token",
+    )
+    .unwrap();
+    for _ in 0..4 {
+        hook(home.path(), root.path(), "aggregate-fixture", None);
+    }
+    let subjects = server.subjects.lock().unwrap();
+    let unique: std::collections::BTreeSet<_> = subjects.iter().collect();
+    assert_eq!(server.writes.load(Ordering::SeqCst), 3);
+    assert_eq!(
+        unique.len(),
+        1,
+        "new runs must reuse the same disk/class subject"
+    );
+    println!(
+        "AGGREGATE_WIRE_DEMO {}",
+        serde_json::json!({"writes":server.writes.load(Ordering::SeqCst),"unique_subjects":unique.len(),"per_run_knot_writes":0,"fixture":"isolated CLI protocol; not a deployed graph"})
     );
 }
