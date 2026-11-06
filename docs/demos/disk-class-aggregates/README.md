@@ -10,13 +10,15 @@ was not replayed. Candidate source is commit `3397b38ae3f9a06d5a024d8dc418a214c9
 binary was built from these same source files before the commit metadata was
 created; this is a source fixture, not an installed release.
 
-[Terminal output](session.log) and [timing](session.time) can be replayed with:
+[Terminal output](session.log.gz) and [timing](session.time) can be replayed with:
 
 ```sh
+gzip -dc session.log.gz > session.log
 scriptreplay --log-out session.log --log-timing session.time
 ```
 
-Playback was verified with util-linux scriptreplay. To repeat the actual control:
+The output is compressed to preserve its exact recorded bytes across Git text
+normalization. Playback was verified with util-linux scriptreplay. To repeat the actual control:
 
 ```sh
 just test --features quipu --test quipu_auth_session \
