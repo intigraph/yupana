@@ -135,21 +135,25 @@ pub(crate) fn fetch_prediction(
     signature: &str,
     filesystem: &str,
 ) -> Result<Option<Prediction>> {
-    if let Some((_, summary)) =
-        aggregate::read(endpoint, signature, filesystem).map_err(Error::Projection)?
-    {
-        return Ok(Some(Prediction {
-            bytes: summary.maximum(),
-            samples: summary.count(),
-            basis: "class maximum",
-        }));
-    }
+    let summary = aggregate::read(endpoint, signature, filesystem).map_err(Error::Projection)?;
+    // A first class summary is not evidence that retained history was seeded.
+    // Keep the legacy floor until migration has an authoritative completion
+    // contract. Errors from either reader remain UNKNOWN, never a lower bound.
     let samples = fetch_legacy_samples(endpoint, signature, filesystem)?;
-    Ok(p90(&samples).map(|bytes| Prediction {
+    let legacy = p90(&samples).map(|bytes| Prediction {
         bytes,
         samples: samples.len() as u64,
         basis: "legacy signature p90",
-    }))
+    });
+    Ok(match (summary, legacy) {
+        (Some((_, summary)), Some(legacy)) if legacy.bytes >= summary.maximum() => Some(legacy),
+        (Some((_, summary)), _) => Some(Prediction {
+            bytes: summary.maximum(),
+            samples: summary.count(),
+            basis: "class maximum",
+        }),
+        (None, legacy) => legacy,
+    })
 }
 
 /// Fetch recent samples for one normalized command/filesystem pair.
@@ -165,7 +169,7 @@ pub fn fetch_samples(endpoint: &str, signature: &str, filesystem: &str) -> Resul
     fetch_legacy_samples(endpoint, signature, filesystem)
 }
 
-// Compatibility until an aggregate exists; old per-run subjects are read-only.
+// Retained legacy floor during migration; old per-run subjects are read-only.
 fn fetch_legacy_samples(
     endpoint: &str,
     signature: &str,

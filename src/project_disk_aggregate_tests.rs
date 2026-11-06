@@ -88,19 +88,24 @@ fn malformed_summary_is_unknown_not_empty_history() {
 }
 
 #[test]
-fn aggregate_projection_reads_one_subject_and_reports_conservative_basis() {
+fn aggregate_projection_reads_one_subject_and_checks_retained_legacy_floor() {
     let state = State::record(None, &id(1), 123, AT).unwrap();
     let body = serde_json::to_string(&state).unwrap();
     let expected_subject = subject("cargo:build", "root:test");
-    let (endpoint, server) = crate::test_stub::stub(1, move |_, request| {
+    let (endpoint, server) = crate::test_stub::stub(2, move |index, request| {
         let query = request["query"].as_str().unwrap();
-        assert!(query.contains(&expected_subject));
-        assert!(query.contains("aggregateState"));
-        assert!(!query.contains("commandSignature"));
-        (
-            200,
-            serde_json::json!({"results":{"bindings":[{"state":{"type":"literal","value":body}}]}}),
-        )
+        if index == 0 {
+            assert!(query.contains(&expected_subject));
+            assert!(query.contains("aggregateState"));
+            assert!(!query.contains("commandSignature"));
+            (
+                200,
+                serde_json::json!({"results":{"bindings":[{"state":{"type":"literal","value":body}}]}}),
+            )
+        } else {
+            assert!(query.contains("commandSignature"));
+            (200, serde_json::json!({"results":{"bindings":[]}}))
+        }
     });
     let prediction = crate::project_disk::fetch_prediction(&endpoint, "cargo:build", "root:test")
         .unwrap()
@@ -298,5 +303,67 @@ fn invalid_receipt_cannot_become_a_success_or_a_retry() {
         )
         .is_err());
         assert_eq!(writes.get(), 1);
+    }
+}
+
+#[test]
+fn first_summary_never_discards_retained_legacy_floor() {
+    use serde_json::json;
+    const GIB: i64 = 1024 * 1024 * 1024;
+    for (maximum, legacy_delta, expected) in [
+        (
+            None,
+            "107374182400",
+            Some((100 * GIB, "legacy signature p90")),
+        ),
+        (
+            Some(GIB),
+            "107374182400",
+            Some((100 * GIB, "legacy signature p90")),
+        ),
+        (
+            Some(20 * GIB),
+            "107374182400",
+            Some((100 * GIB, "legacy signature p90")),
+        ),
+        (
+            Some(200 * GIB),
+            "107374182400",
+            Some((200 * GIB, "class maximum")),
+        ),
+        (Some(GIB), "corrupt", None),
+    ] {
+        let summary = maximum
+            .map(|n| serde_json::to_string(&State::record(None, &id(1), n, AT).unwrap()).unwrap());
+        let (endpoint, server) = crate::test_stub::stub(5, move |index, _| {
+            let rows = match index {
+                0 => summary
+                    .as_ref()
+                    .map_or(json!([]), |state| json!([{"state":{"value":state}}])),
+                1 => json!([{"s":{"value":"urn:legacy"}}]),
+                2 => {
+                    json!([{"s":{"value":"urn:legacy"},"t":{"value":format!("{}CommandDiskImpactObservation",crate::export::ONTO)}}])
+                }
+                3 => json!([{"s":{"value":"urn:legacy"},"fs":{"value":"root:test"}}]),
+                _ => json!([{"s":{"value":"urn:legacy"},"delta":{"value":legacy_delta}}]),
+            };
+            (200, json!({"results":{"bindings":rows}}))
+        });
+        let result = crate::project_disk::fetch_prediction(
+            &endpoint,
+            "cargo:build|repo:test|cwd:root",
+            "root:test",
+        );
+        if let Some((bytes, basis)) = expected {
+            let prediction = result.unwrap().unwrap();
+            assert_eq!((prediction.bytes, prediction.basis), (bytes, basis));
+            assert!(
+                prediction.bytes > 8 * GIB,
+                "10GiB headroom warning must survive"
+            );
+        } else {
+            assert!(result.is_err(), "corrupt legacy history must stay UNKNOWN");
+        }
+        assert_eq!(server.join().unwrap().len(), 5);
     }
 }

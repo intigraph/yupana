@@ -470,10 +470,12 @@ upper bounds; no raw per-run sample list is retained. A guarded atomic update
 replaces the coherent summary. Conflicts have bounded retries; authentication
 refusals do not retry, and ambiguous writes require readback before success.
 
-For advice, the guard uses the exact class maximum so pooling repositories
-cannot lower the observed bound. Until a class summary exists it reads the
-legacy signature's latest 100 samples and uses their nearest-rank p90. The
-message states which basis it used. If the prediction exceeds 80% of current
+For advice, the guard takes the greater of the exact class maximum and the
+legacy signature's latest-100-sample nearest-rank p90. A first class summary
+does not prove historical seeding completed, so it cannot remove the retained
+legacy floor. Both readers remain active until an authoritative migration
+completion contract exists; an error in either leaves the prediction UNKNOWN.
+The message states the basis of the bound it used. If the prediction exceeds 80% of current
 headroom it emits a `governed, not blocking` message; there is no enforcement
 branch. A historical maximum can overestimate later runs, so this is explicitly
 conservative advice. Historical raw-node migration is a separate operation and
