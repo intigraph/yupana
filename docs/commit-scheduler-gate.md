@@ -78,7 +78,15 @@ Schedule-Exception: change-123
 
 The normal deployment-selected `sd` reader must resolve exactly one item at the
 same Quipu endpoint as the policy. It must have status `open` and be a direct
-child of the policy's migration parent. Its description must name every exact
+child of the policy's migration parent. Its description must contain exactly one
+`Repository: <absolute Quipu GitRepo IRI>` line (without angle brackets).
+Yupana reads the checked repository's actual `origin` remote and resolves its
+host plus owner/repository through a unique governed `GitRepo` `externalUrl`
+registration. HTTP/HTTPS/SSH and `.git` spellings of the same forge remote are
+normalized; local paths, missing origins, missing registrations, ambiguous
+registrations and non-IRI results refuse. A matching basename is insufficient.
+The commit message cannot supply the repository identity. Missing repository
+fields refuse, including on older exceptions. Its description must name every exact
 `exception_target` returned in the report, each on a separate line (backticks
 are allowed). Timer/plist targets are exact unit paths; command/config targets
 include their path and complete extracted definition. Substring matches do not
@@ -108,3 +116,31 @@ the measured events and existing hooks, and restores the prior governed tier.
 It uses a finite local policy fixture and an actual Git commit-msg hook. It proves
 candidate refusal and counting, not installed fleet coverage. Live-policy advise
 measurement and host/repository adoption require separate read-back.
+
+## Repository-binding regression demonstration
+
+An open direct child with description `clock.timer` and no repository field
+previously admitted that path. The same focused assertion now requires refusal:
+
+```sh
+just test --locked --features quipu --lib exception_missing_repository_must_refuse
+```
+
+Observed source-control transcript (base `4002cae5`, then this repair):
+
+```text
+before: exception_missing_repository_must_refuse ... FAILED
+        assertion failed: validate_exception(...).is_err()
+        test result: FAILED. 0 passed; 1 failed
+        exit 101
+after:  exception_missing_repository_must_refuse ... ok
+        exit 0
+```
+
+This is a readable transcript of a library reproducer, not an installed-fleet
+claim. The CLI integration control
+`actual_cli_exception_is_bound_to_derived_repo_path_and_open_lifetime` also runs
+five isolated cases: matching repository/path permits; another repository,
+another path, no repository field, and a closed child each refuse. Its finite
+HTTP and Seeds fixtures carry no real credentials. Normal release and installed
+boundary controls remain necessary before promoting the governed tier.

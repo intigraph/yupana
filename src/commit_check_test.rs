@@ -50,8 +50,15 @@ fn governed_advise_then_block_and_missing_coverage() {
 
 #[test]
 fn exception_requires_exact_open_direct_child_and_unit() {
-    let good = serde_json::json!([{"id":"change-123","status":"open","parent":"change-root","description":"Migration\nclock.timer\n"}]);
-    assert!(validate_exception(&good, "change-123", "change-root", &timer()).is_ok());
+    let good = serde_json::json!([{"id":"change-123","status":"open","parent":"change-root","description":"Migration\nRepository: https://example.org/repo/one\nclock.timer\n"}]);
+    assert!(validate_exception(
+        &good,
+        "change-123",
+        "change-root",
+        "https://example.org/repo/one",
+        &timer()
+    )
+    .is_ok());
     for (field, value) in [
         ("status", "closed"),
         ("status", "in_progress"),
@@ -62,7 +69,14 @@ fn exception_requires_exact_open_direct_child_and_unit() {
         let mut bad = good.clone();
         bad[0][field] = value.into();
         assert!(
-            validate_exception(&bad, "change-123", "change-root", &timer()).is_err(),
+            validate_exception(
+                &bad,
+                "change-123",
+                "change-root",
+                "https://example.org/repo/one",
+                &timer()
+            )
+            .is_err(),
             "{field}"
         );
     }
@@ -71,7 +85,14 @@ fn exception_requires_exact_open_direct_child_and_unit() {
         serde_json::json!({"error":"unreadable"}),
         serde_json::json!([good[0], good[0]]),
     ] {
-        assert!(validate_exception(&bad, "change-123", "change-root", &timer()).is_err());
+        assert!(validate_exception(
+            &bad,
+            "change-123",
+            "change-root",
+            "https://example.org/repo/one",
+            &timer()
+        )
+        .is_err());
     }
 }
 
@@ -126,4 +147,63 @@ fn real_git_index_partial_staging_and_deleted_definition() {
     run(repo, &["add", "--", "clock.timer"]);
     let staged = git_text(repo, &["write-tree"]).unwrap();
     assert!(changed_facts(repo, &current, &staged).unwrap().is_empty());
+}
+
+#[test]
+fn exception_missing_repository_must_refuse() {
+    let unbound = serde_json::json!([{"id":"change-123","status":"open","parent":"change-root","description":"clock.timer"}]);
+    assert!(validate_exception(
+        &unbound,
+        "change-123",
+        "change-root",
+        "https://example.org/repo/one",
+        &timer()
+    )
+    .is_err());
+}
+
+#[test]
+fn repository_identity_retains_host_owner_and_refuses_local_paths() {
+    let https = remote_urls("https://example.org/team/one.git").unwrap();
+    assert_eq!(https, remote_urls("git@example.org:team/one.git").unwrap());
+    assert_ne!(
+        https,
+        remote_urls("https://other.example/team/one.git").unwrap()
+    );
+    assert_ne!(
+        https,
+        remote_urls("https://example.org/other/one.git").unwrap()
+    );
+    for bad in [
+        "/tmp/one",
+        "file:///tmp/one",
+        "https://example.org/team/one?x=y",
+        "https://example.org/team/../one",
+        "../one",
+    ] {
+        assert!(remote_urls(bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn same_path_in_another_repository_is_refused() {
+    let good = serde_json::json!([{"id":"change-123","status":"open","parent":"change-root","description":"Repository: https://example.org/repo/one\nclock.timer"}]);
+    assert!(validate_exception(
+        &good,
+        "change-123",
+        "change-root",
+        "https://example.org/repo/two",
+        &timer()
+    )
+    .is_err());
+    let mut duplicate = good.clone();
+    duplicate[0]["description"] = "Repository: https://example.org/repo/one\nRepository: https://example.org/repo/one\nclock.timer".into();
+    assert!(validate_exception(
+        &duplicate,
+        "change-123",
+        "change-root",
+        "https://example.org/repo/one",
+        &timer()
+    )
+    .is_err());
 }

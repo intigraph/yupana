@@ -11,6 +11,12 @@ use serde::Serialize;
 use crate::commit_schedule::{self, Fact};
 use crate::textrules::{self, TextRule, TextTier};
 
+#[path = "commit_repository.rs"]
+mod repository;
+#[cfg(test)]
+use repository::remote_urls;
+use repository::repository_iri;
+
 /// Native commit-msg/CI invocation. Neither mode changes the worktree or refs.
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -147,10 +153,12 @@ impl Args {
                 &read_exception(&id, &self.endpoint)?,
                 &id,
                 parent,
+                &repository_iri(&self.repo, &self.endpoint)?,
                 &report.additions,
             )?;
             report.outcome = "allow".into();
-            report.reason = "open migration child names every exact unit/line".into();
+            report.reason =
+                "open migration child binds the repository and every exact unit/line".into();
             report.exception = Some(id);
         }
         Ok(report)
@@ -351,6 +359,7 @@ pub fn validate_exception(
     value: &serde_json::Value,
     id: &str,
     parent: &str,
+    repository: &str,
     facts: &[Fact],
 ) -> Result<()> {
     let rows = value
@@ -376,6 +385,19 @@ pub fn validate_exception(
     let description = item["description"]
         .as_str()
         .context("exception has no readable description")?;
+    let repositories: Vec<_> = description
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("Repository:"))
+        .map(str::trim)
+        .collect();
+    ensure!(
+        repositories.len() == 1,
+        "exception requires exactly one Repository: IRI field"
+    );
+    ensure!(
+        repositories[0] == repository,
+        "exception repository does not match the checked repository"
+    );
     for fact in facts {
         ensure!(
             description
