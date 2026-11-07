@@ -25,9 +25,6 @@ fn policy(tier: &str) -> Vec<Value> {
 }
 
 fn server(tier: Option<&str>) -> (String, std::thread::JoinHandle<()>) {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.set_nonblocking(true).unwrap();
-    let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let replies = match tier {
         Some(tier) => vec![
             json!({"results":{"bindings":[{"s":{"type":"uri","value":"https://example.org/scheduler-policy"}}]}}),
@@ -35,6 +32,13 @@ fn server(tier: Option<&str>) -> (String, std::thread::JoinHandle<()>) {
         ],
         None => vec![json!({"results":{"bindings":[]}})],
     };
+    server_replies(replies)
+}
+
+fn server_replies(replies: Vec<Value>) -> (String, std::thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let thread = std::thread::spawn(move || {
         for reply in replies {
             let start = Instant::now();
@@ -75,6 +79,18 @@ fn server(tier: Option<&str>) -> (String, std::thread::JoinHandle<()>) {
                         break;
                     }
                 }
+            }
+            if let Some(iri) = reply["results"]["bindings"][0]["repo"]["value"].as_str() {
+                let repository = iri.rsplit('/').next().unwrap();
+                let request = String::from_utf8(request).unwrap();
+                assert!(
+                    request.contains(&format!("https://example.org/team/{repository}")),
+                    "identity query did not use actual origin: {request}"
+                );
+                assert!(
+                    request.contains("externalUrl"),
+                    "identity query omitted governed registration"
+                );
             }
             let reply = reply.to_string();
             write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", reply.len(), reply).unwrap();
@@ -292,4 +308,100 @@ fn committed_ci_range_refuses_amend_that_drops_its_exception() {
     assert_eq!(report["outcome"], "refuse");
     assert_eq!(report["additions"].as_array().unwrap().len(), 1);
     assert!(report["exception"].is_null());
+}
+
+#[cfg(unix)]
+#[test]
+fn actual_cli_exception_is_bound_to_derived_repo_path_and_open_lifetime() {
+    use std::os::unix::fs::PermissionsExt;
+    for (case, repository, description, status, allowed) in [
+        (
+            "bound",
+            "one",
+            "Repository: https://example.org/repos/one\nclock.timer",
+            "open",
+            true,
+        ),
+        (
+            "cross-repository",
+            "two",
+            "Repository: https://example.org/repos/one\nclock.timer",
+            "open",
+            false,
+        ),
+        (
+            "wrong-path",
+            "one",
+            "Repository: https://example.org/repos/one\nother.timer",
+            "open",
+            false,
+        ),
+        ("missing-repository", "one", "clock.timer", "open", false),
+        (
+            "closed",
+            "one",
+            "Repository: https://example.org/repos/one\nclock.timer",
+            "closed",
+            false,
+        ),
+    ] {
+        let dir = fixture();
+        let repo = dir.path();
+        ok(
+            repo,
+            &[
+                "remote",
+                "add",
+                "origin",
+                &format!("https://example.org/team/{repository}.git"),
+            ],
+        );
+        std::fs::write(repo.join("clock.timer"), "[Timer]\nOnCalendar=hourly\n").unwrap();
+        ok(repo, &["add", "--", "clock.timer"]);
+        let message = repo.join("message");
+        std::fs::write(&message, "timer\n\nSchedule-Exception: change-123\n").unwrap();
+        let bin = repo.join("fixture-bin");
+        std::fs::create_dir(&bin).unwrap();
+        let reader = bin.join("sd");
+        let response = json!([{"id":"change-123", "status":status, "parent":"change-root", "description":description}]).to_string();
+        // A private finite reader fixture: no credential/config copied and no
+        // production read/write. The repository identity comes from Git+HTTP.
+        std::fs::write(
+            &reader,
+            format!("#!/bin/sh\ncat <<'RESULT'\n{response}\nRESULT\n"),
+        )
+        .unwrap();
+        std::fs::set_permissions(&reader, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let (endpoint, thread) = server_replies(vec![
+            json!({"results":{"bindings":[{"s":{"type":"uri","value":"https://example.org/scheduler-policy"}}]}}),
+            json!({"results":{"bindings":policy("block")}}),
+            json!({"results":{"bindings":[{"repo":{"type":"uri","value":format!("https://example.org/repos/{repository}")}}]}}),
+        ]);
+        let path = std::env::join_paths(
+            std::iter::once(bin).chain(std::env::split_paths(&std::env::var_os("PATH").unwrap())),
+        )
+        .unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_yupana"))
+            .args(["commit-check", "--repo"])
+            .arg(repo)
+            .args(["--endpoint", &endpoint, "--message-file"])
+            .arg(&message)
+            .env("PATH", path)
+            .env("YUPANA_METRICS_PATH", repo.join("metrics.jsonl"))
+            .output()
+            .unwrap();
+        thread.join().unwrap();
+        let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(output.status.success(), allowed, "{case}: {report}");
+        assert_eq!(
+            report["exception"].as_str(),
+            allowed.then_some("change-123"),
+            "{case}"
+        );
+        assert_eq!(
+            report["outcome"],
+            if allowed { "allow" } else { "unknown" },
+            "{case}"
+        );
+    }
 }

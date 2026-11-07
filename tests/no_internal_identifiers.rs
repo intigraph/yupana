@@ -255,6 +255,9 @@ fn the_ontology_namespace_allowance_is_still_needed_and_still_bounded() {
         "shapes/fixtures/violating.ttl",
         // CI equivalence is projected from the governed ontology at pre-push.
         "src/ci_shift.rs",
+        // Commit exceptions resolve actual origin through the governed GitRepo
+        // externalUrl registration in this existing ontology.
+        "src/commit_repository.rs",
         "src/export.rs",
         // Config drift reads and emits ConfigFile facts in the promoted ontology.
         "src/hook/config_drift.rs",
