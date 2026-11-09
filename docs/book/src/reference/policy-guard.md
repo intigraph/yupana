@@ -587,8 +587,66 @@ also refuse the projection. Direct callers of the selector receive UNKNOWN for
 an invalid or empty scope list, even when another check would match. Partial
 knowledge must not certify that a push is unaffected or run a partial check set.
 
-These checks validate map integrity, not command trust or repository isolation.
-The current selector matches repository-relative paths; common paths can match
-in different repositories. Review repository identity, command authority,
-execution budgets and result attribution before arming a cross-repository map.
-Local checks supplement complete hosted CI and independent review.
+These checks validate legacy map integrity, not command trust or repository
+isolation. **Legacy graph commands cannot execute.** The hook reports UNKNOWN
+for selected legacy checks, and both legacy executor entrypoints are retired.
+The detached entrypoint refuses without IO; the background compatibility
+entrypoint starts no command and publishes no result. A previously saved result
+does not establish a current check outcome.
+
+### Repository-owned static advice
+
+`ci_authority::plan` is a pure, non-executing ADVISE planner. The graph selects
+only a canonical `forge-host/owner/repository` and a stable check ID. It cannot
+provide argv, shell text, budgets or other executable content. Unknown fields,
+partial projections, cross-repository references, duplicate IDs and unknown
+checks refuse the whole plan, including nonmatching references.
+
+The repository owns a reviewed JSON manifest:
+
+```json
+{
+  "schema": 1,
+  "repository": "github.com/example/project",
+  "source_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "checks": [{
+    "id": "syntax",
+    "argv": ["scripts/check-static"],
+    "scopes": ["src/**"],
+    "static_only": true,
+    "network": false,
+    "timeout_seconds": 30,
+    "output_bytes": 65536
+  }]
+}
+```
+
+Its graph selection input is:
+
+```json
+{"truncated": false, "checks": [
+  {"repository": "github.com/example/project", "check_id": "syntax"}
+]}
+```
+
+The caller must independently verify the checkout's canonical repository,
+source revision and reviewed manifest digest. **A digest supplied by the graph
+or mutable manifest is not review authority.** The planner checks those
+independent inputs for consistency; it does not authenticate a review, discover
+the origin, load a manifest from disk, or authorize execution. The hook has no
+activation adapter for this planner yet.
+
+Advice carries repository, full source revision, manifest digest, check ID,
+manifest-owned argv and proposed budgets. Inputs are capped at 64 KiB each,
+64 check definitions/references and 1,000 changed paths. Only declared static,
+network-disabled checks with at most 30 seconds and 64 KiB output each are
+eligible; selected time budgets must total at most 60 seconds. These are plan
+constraints, **not a claim of process sandboxing or enforced child limits**.
+There is no child executor. Missing mappings remain UNKNOWN; a complete valid
+nonmatching map is quiet.
+
+Activation, authenticated review loading, dirty-tree/symlink checks, process
+isolation, bounded child execution and fresh result receipts need a separate
+reviewed adapter before any command can run. No map is enrolled by this source
+change, and no enforcement mode changes. Local advice supplements complete
+hosted CI and independent review; it does not establish reduced CI failures.

@@ -1,8 +1,8 @@
 //! CI shift-left planning and background execution.
 //!
 //! Quipu owns the map: CI jobs point to local commands and gated path scopes.
-//! Yupana only projects that graph, intersects it with a change, and executes
-//! the selected commands asynchronously at the pre-push decision point.
+//! Legacy projections are integrity-checked, but never authorize execution.
+//! Repository-owned static advice lives in `ci_authority`; activation is separate.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -160,43 +160,17 @@ pub struct CheckResult {
     pub passed: bool,
 }
 
-/// Run selected checks in a background thread and atomically publish results.
+/// Retired graph-command executor. No process or result is produced.
 ///
-/// The command text is governed Quipu data. Callers must pass only a validated
-/// projection; this executor deliberately does not discover commands from a
-/// mutable workspace file.
+/// Raw graph text is not command authority. Keep this compatibility entrypoint
+/// non-executing; absence of a fresh source-bound result remains UNKNOWN.
+#[deprecated(note = "graph commands cannot execute; use ci_authority::plan for advice")]
 pub fn run_background(
     root: PathBuf,
     checks: Vec<CiCheck>,
     result_path: PathBuf,
 ) -> std::thread::JoinHandle<()> {
-    std::thread::spawn(move || {
-        let results: Vec<CheckResult> = checks
-            .into_iter()
-            .map(|check| CheckResult {
-                passed: Command::new("sh")
-                    .arg("-c")
-                    .arg(&check.command)
-                    .current_dir(&root)
-                    .status()
-                    .is_ok_and(|status| status.success()),
-                label: check.label,
-            })
-            .collect();
-        let Some(parent) = result_path.parent() else {
-            return;
-        };
-        if std::fs::create_dir_all(parent).is_err() {
-            return;
-        }
-        let tmp = result_path.with_extension("tmp");
-        if serde_json::to_vec(&results)
-            .ok()
-            .is_some_and(|bytes| std::fs::write(&tmp, bytes).is_ok())
-        {
-            let _ = std::fs::rename(tmp, result_path);
-        }
-    })
+    std::thread::spawn(move || drop((root, checks, result_path)))
 }
 
 /// Read the last asynchronously published results.
@@ -241,28 +215,13 @@ pub fn changed_for_push(root: &Path) -> Option<Vec<PathBuf>> {
     Some(paths)
 }
 
-/// Launch each selected local equivalent as a child process that survives the
-/// short-lived hook process. Commands are arguments, not interpolated shell
-/// text; only governed graph projections reach this boundary.
-pub fn spawn_detached(root: &Path, checks: &[CiCheck], state_dir: &Path) -> Result<()> {
-    std::fs::create_dir_all(state_dir)?;
-    for (index, check) in checks.iter().enumerate() {
-        let result = state_dir.join(format!("{index}.status"));
-        let tmp = state_dir.join(format!("{index}.tmp"));
-        Command::new("sh")
-            .args([
-                "-c",
-                "sh -c \"$1\" >/dev/null 2>&1; code=$?; printf '%s' \"$code\" >\"$2\"; mv \"$2\" \"$3\"",
-                "yupana-ci",
-                &check.command,
-                &tmp.to_string_lossy(),
-                &result.to_string_lossy(),
-            ])
-            .current_dir(root)
-            .spawn()
-            .map_err(|e| Error::Projection(format!("could not start `{}`: {e}", check.label)))?;
-    }
-    Ok(())
+/// Retired detached graph-command executor; always refuses before any IO.
+#[deprecated(note = "graph commands cannot execute; use ci_authority::plan for advice")]
+pub fn spawn_detached(_root: &Path, _checks: &[CiCheck], _state_dir: &Path) -> Result<()> {
+    Err(Error::Projection(
+        "graph command execution disabled: repository-owned reviewed argv authority required"
+            .into(),
+    ))
 }
 
 /// Metrics-spool kind for a push with no CI-map verdict (aegis-qddvr6).
@@ -304,24 +263,10 @@ pub(crate) fn hook_advisory(payload: &str, command: &str) -> crate::hook::Outcom
     match select(&checks, &changed) {
         Selection::Unknown => crate::hook::unknown_quietly(UNKNOWN_KIND, "no governed CI map"),
         Selection::Quiet => Outcome::Allow,
-        Selection::Checks(selected) => {
-            let Some(state) = crate::projection_cache::cache_path()
-                .and_then(|path| path.parent().map(|parent| parent.join("ci-shift-left")))
-            else {
-                return crate::hook::unknown_quietly(UNKNOWN_KIND, "no state directory");
-            };
-            if let Err(error) = spawn_detached(&root, &selected, &state) {
-                return crate::hook::unknown_quietly(UNKNOWN_KIND, error.to_string());
-            }
-            Outcome::Notify(format!(
-                "yupana CI shift-left: started local CI equivalents in background: {}",
-                selected
-                    .iter()
-                    .map(|check| check.label.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ))
-        }
+        Selection::Checks(_) => crate::hook::unknown_quietly(
+            UNKNOWN_KIND,
+            "repository-owned CI authority is not activated; graph commands cannot execute",
+        ),
     }
 }
 
@@ -383,38 +328,24 @@ mod tests {
     }
 
     #[test]
-    fn background_results_are_published_atomically() {
+    #[allow(deprecated)]
+    fn graph_commands_cannot_start_children_or_publish_success() {
         let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("executed");
         let path = dir.path().join("state/results.json");
-        let checks = vec![
-            CiCheck {
-                id: "ok".into(),
-                label: "passes".into(),
-                command: "true".into(),
-                scopes: vec!["**".into()],
-            },
-            CiCheck {
-                id: "bad".into(),
-                label: "fails".into(),
-                command: "false".into(),
-                scopes: vec!["**".into()],
-            },
-        ];
+        let checks = vec![CiCheck {
+            id: "injection".into(),
+            label: "untrusted graph command".into(),
+            command: format!("touch {}", marker.display()),
+            scopes: vec!["**".into()],
+        }];
+        assert!(spawn_detached(dir.path(), &checks, &dir.path().join("state")).is_err());
         run_background(dir.path().into(), checks, path.clone())
             .join()
             .unwrap();
-        assert_eq!(
-            read_results(&path).unwrap(),
-            vec![
-                CheckResult {
-                    label: "passes".into(),
-                    passed: true
-                },
-                CheckResult {
-                    label: "fails".into(),
-                    passed: false
-                },
-            ]
-        );
+        assert!(!marker.exists());
+        assert!(!path.exists());
+        assert!(!dir.path().join("state").exists());
+        assert_eq!(read_results(&path), None);
     }
 }
