@@ -1,0 +1,10 @@
+running 13 tests
+test ci_authority::tests::duplicates_and_total_budget_overflow_cannot_produce_partial_advice ... ok
+test ci_authority::tests::graph_command_text_unknown_ids_and_partial_maps_are_refused ... ok
+test ci_authority::tests::matching_static_advice_is_bound_and_complete_nonmatch_is_quiet ... ok
+test ci_authority::tests::same_path_in_another_repository_cannot_select_a_command ... ok
+test ci_authority::tests::source_manifest_tampering_and_replayed_review_digest_are_refused ... ok
+test ci_shift::tests::graph_commands_cannot_start_children_or_publish_success ... ok
+test ci_authority::tests::unsafe_or_unbounded_manifest_is_refused_even_for_nonmatching_paths ... ok
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 1042 filtered out; finished in 0.00s
+RESULT: clean — 161 watched path(s) and 5 UID-keyed resource(s), none touched. (command exit 0)
