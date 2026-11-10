@@ -171,7 +171,7 @@ fn snapshot_write_names_one_atomic_replacement_envelope() {
         }
         let split = bytes.windows(4).position(|w| w == b"\r\n\r\n").unwrap();
         let body: serde_json::Value = serde_json::from_slice(&bytes[split + 4..]).unwrap();
-        let response = b"{\"count\":1,\"tx_id\":null}";
+        let response = b"{\"count\":1,\"tx_id\":1}";
         write!(
             sock,
             "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n",

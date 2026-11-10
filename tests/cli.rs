@@ -1499,7 +1499,7 @@ fn capturing_knot() -> (std::net::SocketAddr, std::sync::mpsc::Receiver<String>)
                 break;
             }
         }
-        let response = r#"{"count":42,"valid_from":"2026-03-03T23:15:00Z"}"#;
+        let response = r#"{"count":42,"tx_id":1,"valid_from":"2026-03-03T23:15:00Z"}"#;
         let _ = write!(
             sock,
             "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{}",
