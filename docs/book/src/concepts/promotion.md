@@ -39,6 +39,12 @@ than pretending. It emits the Turtle, SHACL-validates in-process against
 `shapes/`, and writes to `/knot` **only if it conforms** — a rejected promotion
 exits non-zero so a script can't read it as landed.
 
+Each successful `/knot` response must also contain a positive integer `tx_id`.
+A missing, null, zero or malformed receipt leaves the promotion unconfirmed,
+even when the server reports a count. The write may have landed: inspect its
+transaction evidence before retrying. A zero triple count with a positive
+transaction receipt remains valid for an idempotent write.
+
 ## When promotion runs — `promote_on` and `--trigger`
 
 Yupana installs no git hooks and owns no commit event of its own, so it does not

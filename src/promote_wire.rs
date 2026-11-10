@@ -127,12 +127,22 @@ pub(super) fn write_knot_request(
     }
     let parsed: KnotResult = serde_json::from_str(&text)
         .map_err(|e| Error::Promote(format!("unexpected /knot response {text:?}: {e}")))?;
+    require_transaction_receipt(&parsed)?;
     if valid_from.is_some() && parsed.valid_from.as_deref().is_none_or(str::is_empty) {
         return Err(Error::Promote(
             "write may have landed, but Quipu did not confirm valid_from; upgrade the server before claiming commit-time provenance".into(),
         ));
     }
     Ok(parsed)
+}
+
+fn require_transaction_receipt(result: &KnotResult) -> Result<()> {
+    if !matches!(result.tx_id, Some(id) if id > 0) {
+        return Err(Error::Promote(
+            "write may have landed, but Quipu did not return a positive tx_id; promotion is unconfirmed".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// Quipu's `/knot` refusal shape (HTTP 200, `conforms:false`).
@@ -163,10 +173,38 @@ struct KnotIssue {
 pub struct KnotResult {
     /// Triples present for these facts after the write — the idempotence signal.
     pub count: u64,
-    /// Quipu's monotonic transaction id, when returned.
+    /// Quipu's monotonic transaction id; promotion requires a positive receipt.
     #[serde(default)]
     pub tx_id: Option<u64>,
     /// Normalized valid-time query key returned by Quipu, never the input spelling.
     #[serde(default)]
     pub valid_from: Option<String>,
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+
+    #[test]
+    fn promotion_requires_positive_integer_transaction_receipt() {
+        for body in [
+            r#"{"count":1}"#,
+            r#"{"count":1,"tx_id":null}"#,
+            r#"{"count":1,"tx_id":0}"#,
+            r#"{"count":1,"tx_id":-1}"#,
+            r#"{"count":1,"tx_id":true}"#,
+            r#"{"count":1,"tx_id":"12"}"#,
+            r#"{"count":1,"tx_id":1.5}"#,
+        ] {
+            let accepted = serde_json::from_str::<KnotResult>(body)
+                .ok()
+                .is_some_and(|result| require_transaction_receipt(&result).is_ok());
+            assert!(!accepted, "accepted ambiguous receipt: {body}");
+        }
+        for count in [0, 1] {
+            let result: KnotResult =
+                serde_json::from_value(serde_json::json!({"count": count, "tx_id": 12})).unwrap();
+            require_transaction_receipt(&result).unwrap();
+        }
+    }
 }
