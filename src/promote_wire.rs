@@ -137,9 +137,9 @@ pub(super) fn write_knot_request(
 }
 
 fn require_transaction_receipt(result: &KnotResult) -> Result<()> {
-    if !matches!(result.tx_id, Some(id) if id > 0) {
+    if !matches!(result.tx_id, Some(id) if id > 0 || result.count == 0) {
         return Err(Error::Promote(
-            "write may have landed, but Quipu did not return a positive tx_id; promotion is unconfirmed".into(),
+            "write may have landed, but Quipu did not return a valid tx_id receipt; promotion is unconfirmed".into(),
         ));
     }
     Ok(())
@@ -173,7 +173,7 @@ struct KnotIssue {
 pub struct KnotResult {
     /// Triples present for these facts after the write — the idempotence signal.
     pub count: u64,
-    /// Quipu's monotonic transaction id; promotion requires a positive receipt.
+    /// Quipu's transaction receipt; zero is valid only with a zero-count no-op.
     #[serde(default)]
     pub tx_id: Option<u64>,
     /// Normalized valid-time query key returned by Quipu, never the input spelling.
@@ -186,7 +186,7 @@ mod receipt_tests {
     use super::*;
 
     #[test]
-    fn promotion_requires_positive_integer_transaction_receipt() {
+    fn promotion_requires_explicit_integer_transaction_receipt() {
         for body in [
             r#"{"count":1}"#,
             r#"{"count":1,"tx_id":null}"#,
@@ -206,5 +206,8 @@ mod receipt_tests {
                 serde_json::from_value(serde_json::json!({"count": count, "tx_id": 12})).unwrap();
             require_transaction_receipt(&result).unwrap();
         }
+        let no_op: KnotResult =
+            serde_json::from_value(serde_json::json!({"count": 0, "tx_id": 0})).unwrap();
+        require_transaction_receipt(&no_op).unwrap();
     }
 }

@@ -39,11 +39,13 @@ than pretending. It emits the Turtle, SHACL-validates in-process against
 `shapes/`, and writes to `/knot` **only if it conforms** — a rejected promotion
 exits non-zero so a script can't read it as landed.
 
-Each successful `/knot` response must also contain a positive integer `tx_id`.
-A missing, null, zero or malformed receipt leaves the promotion unconfirmed,
+Each successful `/knot` response must also contain an integer `tx_id`.
+A missing, null, negative or malformed receipt leaves the promotion unconfirmed,
 even when the server reports a count. The write may have landed: inspect its
 transaction evidence before retrying. A zero triple count with a positive
 transaction receipt remains valid for an idempotent write.
+The explicit `tx_id: 0, count: 0` no-op receipt is also valid; a zero transaction
+ID paired with a nonzero count is refused.
 
 ## When promotion runs — `promote_on` and `--trigger`
 
