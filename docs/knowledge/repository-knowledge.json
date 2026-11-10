@@ -8,7 +8,7 @@
       "source": "docs/book/src/concepts/promotion.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
       "summary": "Yupana holds the volatile per-tenant structural graph; explicit promotion sends committed structural facts to Quipu as governed history.",
-      "source_sha256": "20a6a32cae32d2eac841be261283e3f93539561d8443df11d13fafe44b858446",
+      "source_sha256": "e2a72ee09a07d5a15e5211629bb52fec873da3128ed261b2904992f3169c3d9f",
       "type": "Concept"
     },
     {
@@ -60,7 +60,7 @@
       "source": "docs/book/src/concepts/promotion.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
       "summary": "Configured read access does not authorize CLI promotion: an explicit destination is required; uncommitted churn is not promoted as settled history.",
-      "source_sha256": "20a6a32cae32d2eac841be261283e3f93539561d8443df11d13fafe44b858446",
+      "source_sha256": "e2a72ee09a07d5a15e5211629bb52fec873da3128ed261b2904992f3169c3d9f",
       "type": "DecisionRecord",
       "properties": {
         "status": "active",
@@ -96,7 +96,7 @@
       "source": "docs/book/src/concepts/promotion.md",
       "subject": "http://aegis.gastown.local/ontology/doc/yupana/docs%2Fbook%2Fsrc%2Fconcepts%2Fpromotion.md",
       "summary": "Read promotion identity, explicit-write authorization and provenance limitations before sharing structural facts.",
-      "source_sha256": "20a6a32cae32d2eac841be261283e3f93539561d8443df11d13fafe44b858446",
+      "source_sha256": "e2a72ee09a07d5a15e5211629bb52fec873da3128ed261b2904992f3169c3d9f",
       "properties": {
         "startHereOrder": 3
       }
