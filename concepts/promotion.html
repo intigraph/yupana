@@ -213,6 +213,13 @@ a conflict. Pass <code>--repo</code> for any export that is captured, shared, or
 than pretending. It emits the Turtle, SHACL-validates in-process against
 <code>shapes/</code>, and writes to <code>/knot</code> <strong>only if it conforms</strong> — a rejected promotion
 exits non-zero so a script can't read it as landed.</p>
+<p>Each successful <code>/knot</code> response must also contain an integer <code>tx_id</code>.
+A missing, null, negative or malformed receipt leaves the promotion unconfirmed,
+even when the server reports a count. The write may have landed: inspect its
+transaction evidence before retrying. A zero triple count with a positive
+transaction receipt remains valid for an idempotent write.
+The explicit <code>tx_id: 0, count: 0</code> no-op receipt is also valid; a zero transaction
+ID paired with a nonzero count is refused.</p>
 <h2 id="when-promotion-runs--promote_on-and---trigger"><a class="header" href="#when-promotion-runs--promote_on-and---trigger">When promotion runs — <code>promote_on</code> and <code>--trigger</code></a></h2>
 <p>Yupana installs no git hooks and owns no commit event of its own, so it does not
 decide <em>when</em> a commit happened — the caller that has the event says so, and
