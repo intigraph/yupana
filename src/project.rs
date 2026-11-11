@@ -48,7 +48,7 @@ pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
     let body = serde_json::json!({ "query": sparql }).to_string();
     // NOT STARTED, never started-and-abandoned — see `projection_budget`.
     let Some(timeout) = crate::projection_budget::call_timeout() else {
-        return Err(Error::Projection(format!(
+        return Err(Error::Unavailable(format!(
             "projection budget spent before POST {url} — not started"
         )));
     };
@@ -61,7 +61,15 @@ pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
         // is how the aegis-x894x2 herd is seen to collapse.
         .set("X-Quipu-Client", crate::quipu_label::current())
         .send_string(&body)
-        .map_err(|e| Error::Projection(format!("POST {url} failed: {e}")))?;
+        .map_err(|e| match e {
+            // quipu never answered, or answered "not now": an outage, not data.
+            ureq::Error::Transport(_) => Error::Unavailable(format!("POST {url} failed: {e}")),
+            ureq::Error::Status(code, _) if code == 408 || code >= 500 => {
+                Error::Unavailable(format!("POST {url} failed: {e}"))
+            }
+            // Any other status is quipu refusing this request: keep it loud.
+            ureq::Error::Status(..) => Error::Projection(format!("POST {url} failed: {e}")),
+        })?;
     if resp
         .header("X-Quipu-Truncated")
         .is_some_and(|value| !value.trim().eq_ignore_ascii_case("false"))

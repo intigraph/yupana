@@ -43,6 +43,18 @@ unreadable Git data and malformed configuration return `unknown` and fail the
 command, including when the governed rule is at WARN. Advise mode permits
 measured violations; it does not turn unmeasured input into a clean commit.
 
+One case is deliberately different. When quipu cannot be reached for the rule
+catalogue at all (connection failure, timeout, HTTP 408 or 5xx, or a spent
+projection budget), the result is `unavailable`: the commit proceeds, the
+command prints a `WARNING: commit scheduler check UNAVAILABLE` line on stderr,
+and the metric records `unavailable`, never `allow`. An outage therefore cannot
+block every commit, and it is still counted rather than mistaken for a pass.
+This applies only to reaching the catalogue. A reachable quipu that answers with
+a refusal (any other HTTP status), a malformed or empty catalogue, and an
+exception that cannot be verified all still return `unknown` and fail. Bound
+the wait with `YUPANA_PROJECTION_HTTP_TIMEOUT_SECS` and
+`YUPANA_PROJECTION_TOTAL_BUDGET_SECS` in the hook environment.
+
 `enforcementTier=warn` returns `advise` and permits measured additions.
 `enforcementTier=block` returns `refuse` and exits nonzero. No exposure downgrade
 applies. The CLI has no severity override. Confirm a bounded labelled set and
@@ -102,7 +114,8 @@ one bounded read; it neither creates an item nor retries it.
 
 Each invocation emits a normal `commit-schedule` metric-spool event containing
 `result`, addition count and evaluated rule ids. A metrics write cannot alter the
-decision. Reports distinguish `allow`, `advise`, `refuse` and `unknown`.
+decision. Reports distinguish `allow`, `advise`, `refuse`, `unknown` and
+`unavailable`; count `unavailable` separately so an outage is visible.
 
 This source does not install Git hooks or alter existing hook chains. Deploy the
 reviewed binary and compose the command through the repository's existing

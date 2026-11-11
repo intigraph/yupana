@@ -30,6 +30,15 @@ pub enum Error {
     #[error("projection error: {0}")]
     Projection(String),
 
+    /// quipu could not be reached: a transport failure, HTTP 408/5xx, or the
+    /// projection budget was spent before the call started. Distinct from
+    /// [`Error::Projection`], which means quipu answered and the answer was
+    /// unusable. Callers that only propagate see an error either way; the
+    /// commit boundary uses the difference to allow-but-count an outage
+    /// instead of refusing every commit.
+    #[error("quipu unavailable: {0}")]
+    Unavailable(String),
+
     /// A share bundle could not be read, verified, or imported into quipu
     /// (`quipu` feature). Distinct from [`Error::Promote`]: promotion writes
     /// facts yupana EXTRACTED, while this covers facts somebody else published
