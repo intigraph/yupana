@@ -1429,7 +1429,7 @@ than degrading to the qualifier.)
 ## Appendix D: Implementation Status
 
 A snapshot of what is actually built, reconciled against the source tree
-2026-10-16. The body of this spec (§§1–11) is the *design*; this appendix is
+2026-11-12. The body of this spec (§§1–11) is the *design*; this appendix is
 the *state*. Source files, lines and test attributes are recomputed from the
 current tree, never carried forward from the previous revision.
 
@@ -1456,9 +1456,9 @@ drops landed outside the phase numbering entirely — the game-state harness
 (FR-35..FR-39) and the golden-path guard (FR-40..FR-42) — each behind its own
 Cargo feature and its own addendum.
 
-**Source layout (`src/`, 285 `.rs` files, ~70,191 lines):** the 400-line soft
+**Source layout (`src/`, 317 `.rs` files, ~76,764 lines):** the 400-line soft
 cap is a warn-not-fail target and 36 non-test files currently exceed it, led by
-`export.rs` (605), `hook/rule_planes.rs` (561) and `promote.rs` (511). Those
+`export.rs` (572), `hook/rule_planes.rs` (561) and `promote.rs` (539). Those
 three are the only entries in `scripts/file-size-baseline.txt`: the ratchet
 freezes their recorded upper bounds — they may shrink but never grow
 — while any file not listed must stay under the hard limit outright. Tests are
@@ -1527,8 +1527,8 @@ hand-built without the flag.
 `cpg` and `lsp` now gate real engines, with tier advertisement and independent
 CI arms. The former empty flags were removed before these implementations landed.
 
-**Tests: 1,328** source test attributes across `src/` and `tests/`, measured
-2026-10-16 by counting `#[test]` and `#[tokio::test]`. This is a source count;
+**Tests: 1,450** source test attributes across `src/` and `tests/`, measured
+2026-11-12 by counting `#[test]` and `#[tokio::test]`. This is a source count;
 compiled counts vary with Cargo features and macro expansion. Appendix D's drift
 guard checks these measurements within its documented tolerance. Python replay,
 session-guard, and session-depth suites run through `just test`; the replay suite
