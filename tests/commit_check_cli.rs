@@ -405,3 +405,111 @@ fn actual_cli_exception_is_bound_to_derived_repo_path_and_open_lifetime() {
         );
     }
 }
+
+/// Answer exactly one request with a bare HTTP status and no body.
+fn status_server(code: u16) -> (String, std::thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let thread = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        // Read the WHOLE request (headers + Content-Length body) before
+        // answering. Closing with unread bytes makes the kernel send RST, and the
+        // client can then see "connection reset" instead of this status: a race
+        // that turned the 400 row into "unavailable" in the CI release feature set.
+        let mut request = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            let n = stream.read(&mut chunk).unwrap();
+            assert!(n > 0, "client closed before sending its request");
+            request.extend_from_slice(&chunk[..n]);
+            if let Some(p) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                let head = std::str::from_utf8(&request[..p]).unwrap();
+                let len: usize = head
+                    .lines()
+                    .find_map(|line| {
+                        line.split_once(':')
+                            .filter(|(k, _)| k.eq_ignore_ascii_case("content-length"))
+                            .map(|(_, v)| v.trim().parse().unwrap())
+                    })
+                    .unwrap_or(0);
+                if request.len() >= p + 4 + len {
+                    break;
+                }
+            }
+        }
+        write!(
+            stream,
+            "HTTP/1.1 {code} Fixture\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+        )
+        .unwrap();
+        stream.flush().unwrap();
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
+    });
+    (endpoint, thread)
+}
+
+#[test]
+fn unreachable_quipu_is_unavailable_and_counted_but_a_refusing_quipu_still_fails_closed() {
+    // An outage must not refuse every commit,
+    // must never read as a pass, and must not become a way past a real answer.
+    let dir = fixture();
+    let repo = dir.path();
+    std::fs::write(repo.join("clock.timer"), "[Timer]\nOnCalendar=hourly\n").unwrap();
+    ok(repo, &["add", "--", "clock.timer"]);
+    let message = repo.join("message");
+    std::fs::write(&message, "add timer\n").unwrap();
+    let refused = {
+        // Bind then drop: nothing listens on this port any more.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        format!("http://{}", listener.local_addr().unwrap())
+    };
+    let run = |endpoint: &str, spool: &Path| {
+        Command::new(env!("CARGO_BIN_EXE_yupana"))
+            .arg("commit-check")
+            .arg("--repo")
+            .arg(repo)
+            .arg("--endpoint")
+            .arg(endpoint)
+            .arg("--message-file")
+            .arg(&message)
+            .env("YUPANA_METRICS_PATH", spool)
+            .output()
+            .unwrap()
+    };
+    for (case, code) in [("refused", None), ("503", Some(503)), ("400", Some(400))] {
+        let spool = repo.join(format!("metrics-{case}.jsonl"));
+        let (endpoint, thread) = match code {
+            Some(code) => {
+                let (endpoint, thread) = status_server(code);
+                (endpoint, Some(thread))
+            }
+            None => (refused.clone(), None),
+        };
+        let output = run(&endpoint, &spool);
+        if let Some(thread) = thread {
+            thread.join().unwrap();
+        }
+        let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+        let metric: Value =
+            serde_json::from_str(std::fs::read_to_string(&spool).unwrap().trim()).unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        if case == "400" {
+            // quipu answered and refused the request: that is data, not an outage.
+            assert!(!output.status.success(), "{case}: {report}");
+            assert_eq!(report["outcome"], "unknown", "{case}");
+            assert_eq!(metric["result"], "unknown", "{case}");
+        } else {
+            assert!(output.status.success(), "{case}: {report} {stderr}");
+            assert_eq!(report["outcome"], "unavailable", "{case}");
+            assert_eq!(metric["result"], "unavailable", "{case}");
+            assert_ne!(
+                metric["result"], "allow",
+                "{case}: an outage is never a pass"
+            );
+            assert!(stderr.contains("UNAVAILABLE"), "{case}: not loud: {stderr}");
+        }
+    }
+}

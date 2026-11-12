@@ -34,8 +34,13 @@ fn error(message: impl std::fmt::Display) -> Error {
 }
 
 fn read(endpoint: &str, sparql: &str) -> Result<Value> {
-    let value: Value =
-        serde_json::from_str(&query(endpoint, sparql).map_err(error)?).map_err(error)?;
+    // Keep an outage typed: re-wrapping it as Projection would make "quipu is
+    // down" indistinguishable from "quipu sent a broken catalogue".
+    let body = query(endpoint, sparql).map_err(|e| match e {
+        Error::Unavailable(_) => e,
+        other => error(other),
+    })?;
+    let value: Value = serde_json::from_str(&body).map_err(error)?;
     if value.get("truncated").and_then(Value::as_bool) == Some(true) {
         return Err(error("truncated result; refusing a partial catalogue"));
     }

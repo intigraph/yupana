@@ -1,5 +1,8 @@
 //! Explicit commit boundary. Fail closed on missing policy, malformed data,
-//! unreadable exception or Git failure. The normal pre-edit hook is unchanged.
+//! unreadable exception or Git failure. One deliberate exception: when quipu
+//! cannot be reached for the rule catalogue at all, the outcome is
+//! `unavailable` (exit 0, counted, loud), so an outage cannot block every
+//! commit and is never mistaken for a pass. The normal pre-edit hook is unchanged.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -40,7 +43,8 @@ pub struct Args {
 /// One counted commit-boundary evaluation.
 #[derive(Debug, Serialize)]
 pub struct Report {
-    /// allow, advise, refuse, or unknown (unknown exits nonzero).
+    /// allow, advise, refuse, unknown (refuse/unknown exit nonzero), or
+    /// unavailable (quipu unreachable: exit 0, counted, never reported as allow).
     pub outcome: String,
     /// Explicit explanation; no stderr scraping required.
     pub reason: String,
@@ -74,6 +78,12 @@ impl Args {
             ],
         );
         println!("{}", serde_json::to_string_pretty(&report)?);
+        if report.outcome == "unavailable" {
+            eprintln!(
+                "WARNING: commit scheduler check UNAVAILABLE: {}",
+                report.reason
+            );
+        }
         if matches!(report.outcome.as_str(), "refuse" | "unknown") {
             bail!(
                 "commit scheduler check {}: {}",
@@ -85,7 +95,26 @@ impl Args {
     }
 
     fn evaluate(&self) -> Result<Report> {
-        let rules: Vec<_> = crate::project::fetch_commit_rules(&self.endpoint)?
+        // An unreachable quipu must not refuse every commit, and it must never
+        // read as a clean pass either: report `unavailable` (exit 0, counted,
+        // loud). Only the rule-catalogue fetch is treated this way. A reachable
+        // quipu with a broken catalogue, and any exception that cannot be
+        // verified, still fail closed below.
+        let fetched = match crate::project::fetch_commit_rules(&self.endpoint) {
+            Err(crate::errors::Error::Unavailable(why)) => {
+                return Ok(Report {
+                    outcome: "unavailable".into(),
+                    reason: format!(
+                        "quipu unreachable; commit allowed UNVERIFIED for scheduler additions: {why}"
+                    ),
+                    rules: Vec::new(),
+                    additions: Vec::new(),
+                    exception: None,
+                });
+            }
+            other => other?,
+        };
+        let rules: Vec<_> = fetched
             .into_iter()
             .filter(|r| {
                 r.class

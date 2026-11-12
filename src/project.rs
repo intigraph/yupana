@@ -5,6 +5,7 @@ use crate::rules::Rule;
 use crate::textrules::TextRule;
 use crate::types::Freshness;
 mod cache_install;
+mod post_error;
 mod text_fetch;
 
 pub use crate::project_decode::{decode_policies, decode_text_rules};
@@ -48,7 +49,7 @@ pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
     let body = serde_json::json!({ "query": sparql }).to_string();
     // NOT STARTED, never started-and-abandoned — see `projection_budget`.
     let Some(timeout) = crate::projection_budget::call_timeout() else {
-        return Err(Error::Projection(format!(
+        return Err(Error::Unavailable(format!(
             "projection budget spent before POST {url} — not started"
         )));
     };
@@ -61,7 +62,7 @@ pub(crate) fn query(endpoint: &str, sparql: &str) -> Result<String> {
         // is how the aegis-x894x2 herd is seen to collapse.
         .set("X-Quipu-Client", crate::quipu_label::current())
         .send_string(&body)
-        .map_err(|e| Error::Projection(format!("POST {url} failed: {e}")))?;
+        .map_err(|e| post_error::classify(&url, &e))?;
     if resp
         .header("X-Quipu-Truncated")
         .is_some_and(|value| !value.trim().eq_ignore_ascii_case("false"))
