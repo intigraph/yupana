@@ -415,13 +415,38 @@ fn status_server(code: u16) -> (String, std::thread::JoinHandle<()>) {
         stream
             .set_read_timeout(Some(Duration::from_secs(5)))
             .unwrap();
-        let mut buf = [0u8; 8192];
-        let _ = stream.read(&mut buf);
+        // Read the WHOLE request (headers + Content-Length body) before
+        // answering. Closing with unread bytes makes the kernel send RST, and the
+        // client can then see "connection reset" instead of this status: a race
+        // that turned the 400 row into "unavailable" in the CI release feature set.
+        let mut request = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            let n = stream.read(&mut chunk).unwrap();
+            assert!(n > 0, "client closed before sending its request");
+            request.extend_from_slice(&chunk[..n]);
+            if let Some(p) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                let head = std::str::from_utf8(&request[..p]).unwrap();
+                let len: usize = head
+                    .lines()
+                    .find_map(|line| {
+                        line.split_once(':')
+                            .filter(|(k, _)| k.eq_ignore_ascii_case("content-length"))
+                            .map(|(_, v)| v.trim().parse().unwrap())
+                    })
+                    .unwrap_or(0);
+                if request.len() >= p + 4 + len {
+                    break;
+                }
+            }
+        }
         write!(
             stream,
             "HTTP/1.1 {code} Fixture\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         )
         .unwrap();
+        stream.flush().unwrap();
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
     });
     (endpoint, thread)
 }
