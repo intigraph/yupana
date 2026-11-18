@@ -62,9 +62,7 @@ fn literal(n: Node, s: &str) -> Option<String> {
     Some(raw[1..raw.len() - 1].into())
 }
 fn args(n: Node) -> Vec<Node> {
-    n.child_by_field_name("arguments")
-        .map(children)
-        .unwrap_or_default()
+    n.child_by_field_name("arguments").map_or_default(children)
 }
 fn keyword<'a>(n: Node<'a>, name: &str, s: &str) -> Option<Node<'a>> {
     args(n)

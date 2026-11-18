@@ -153,7 +153,7 @@ pub(super) fn hints(root: Node<'_>, bytes: &[u8]) -> HashMap<usize, CallBinding>
         .into_iter()
         .map(|(node, scope)| {
             let function = node.child_by_field_name("function");
-            let expression = function.map(|n| text(n, bytes)).unwrap_or_default();
+            let expression = function.map_or_default(|n| text(n, bytes));
             let mut parts = expression.split('.');
             let first = parts.next().unwrap_or_default();
             let rest: Vec<_> = parts.collect();
