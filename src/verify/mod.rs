@@ -126,7 +126,7 @@ pub fn verify_buffer(
         by_name
     };
     let proposed_signatures = signatures(&facts);
-    let baseline_signatures = baseline_facts.as_ref().map(signatures).unwrap_or_default();
+    let baseline_signatures = baseline_facts.as_ref().map_or_default(signatures);
     let changed_here: BTreeSet<String> = baseline_signatures
         .keys()
         .chain(proposed_signatures.keys())

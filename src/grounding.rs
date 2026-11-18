@@ -209,8 +209,7 @@ pub fn evaluate(
         let why = rule
             .rationale
             .as_deref()
-            .map(|r| format!(" ({r})"))
-            .unwrap_or_default();
+            .map_or_default(|r| format!(" ({r})"));
         match rule.match_type {
             GroundMatch::MustNotGround => {
                 if !grounding.grounded.is_empty() {
