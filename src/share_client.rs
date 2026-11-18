@@ -78,22 +78,20 @@ fn verdict_from(bundle: &Bundle, source: &str, to: &str, body: &serde_json::Valu
         .get("promotion")
         .and_then(|p| p.get("blockers"))
         .and_then(|b| b.as_array())
-        .map(|a| {
+        .map_or_default(|a| {
             a.iter()
                 .filter_map(|v| v.as_str().map(str::to_string))
                 .collect()
-        })
-        .unwrap_or_default();
+        });
     let unmatched: Vec<String> = body
         .get("resolution")
         .and_then(|r| r.get("unmatched"))
         .and_then(|u| u.as_array())
-        .map(|a| {
+        .map_or_default(|a| {
             a.iter()
                 .filter_map(|v| v.as_str().map(str::to_string))
                 .collect()
-        })
-        .unwrap_or_default();
+        });
     let triples = body
         .get("triples")
         .and_then(|t| {
