@@ -461,7 +461,7 @@ impl super::Cli {
                 let denial = crate::recurrence::latest_denial(spool, policy).ok_or_else(|| {
                     anyhow::anyhow!(
                         "no spooled denial{} in {} — nothing to draft from",
-                        policy.map(|p| format!(" under `{p}`")).unwrap_or_default(),
+                        policy.map_or_default(|p| format!(" under `{p}`")),
                         spool.display()
                     )
                 })?;
