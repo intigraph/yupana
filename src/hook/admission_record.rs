@@ -88,8 +88,8 @@ pub(super) fn record(config: &crate::config::YupanaConfig, observed: &Observatio
         tenant: agent,
         result: result.into(),
         repo: observed.repository.into(),
-        sha: context.map(|c| c.head.clone()).unwrap_or_default(),
-        git_ref: context.map(|c| c.base_ref.clone()).unwrap_or_default(),
+        sha: context.map_or_default(|c| c.head.clone()),
+        git_ref: context.map_or_default(|c| c.base_ref.clone()),
         remote_authority: observed.authority.into(),
         scope_provenance: serde_json::json!({
             "policy":observed.rule.id,"policy_revision":observed.rule.predicate.revision,

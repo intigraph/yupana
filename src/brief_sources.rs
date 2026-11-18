@@ -260,8 +260,7 @@ pub(crate) fn similar_items(
             SimilarItem {
                 ground: scopes
                     .and_then(|s| s.scope_for(&id))
-                    .map(|scope| scope.allow_paths)
-                    .unwrap_or_default(),
+                    .map_or_default(|scope| scope.allow_paths),
                 id,
                 label: entity["label"].as_str().map(str::to_string).or(label),
                 outcome,
@@ -451,8 +450,7 @@ pub fn gather(config: &YupanaConfig, root: &Path) -> Option<Brief> {
     let paths: Vec<String> = registry
         .work_item_scopes()
         .and_then(|scopes| scopes.scope_for(&item))
-        .map(|scope| scope.allow_paths)
-        .unwrap_or_default();
+        .map_or_default(|scope| scope.allow_paths);
 
     let label = label_of(&endpoint, &item);
     let query_text = label.clone().unwrap_or_else(|| item.clone());
