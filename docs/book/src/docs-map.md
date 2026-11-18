@@ -49,6 +49,7 @@ The book's **Design** section summarises the addenda below and links to them.
 | [Work-scoped agent governance](https://github.com/scbrown/yupana/blob/main/docs/work-scoped-governance.md) | partially implemented; the doc says which parts |
 | [Governed landing policy](https://github.com/scbrown/yupana/blob/main/docs/design/landing-policy.md) | design, advise tier first |
 | [Paper plan](https://github.com/scbrown/yupana/blob/main/docs/design/paper.md): evidence-local constraint enforcement | planned |
+| [Consequence-aware action routing](https://github.com/scbrown/yupana/blob/main/docs/design/consequence-aware-routing.md): reversibility, consequence and graded routes, from CASEL | design only |
 
 ## Research and evaluation
 
