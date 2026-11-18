@@ -206,16 +206,11 @@ impl TextRule {
     /// rule, its class, and its rationale — a refusal that explains itself.
     fn message_for(&self, token: &str) -> String {
         let what = self.label.as_deref().unwrap_or(&self.name);
-        let class = self
-            .class
-            .as_deref()
-            .map(|c| format!(" ({c})"))
-            .unwrap_or_default();
+        let class = self.class.as_deref().map_or_default(|c| format!(" ({c})"));
         let why = self
             .rationale
             .as_deref()
-            .map(|r| format!(" {r}"))
-            .unwrap_or_default();
+            .map_or_default(|r| format!(" {r}"));
         format!(
             "governed text rule `{}`: the edit introduces `{token}`{class} — {what}.{why}",
             self.name

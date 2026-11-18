@@ -92,7 +92,7 @@ impl Attribution {
         executor: Option<&str>,
         tool: Option<&str>,
     ) -> Self {
-        let chain = chain_raw.map(parse_chain).unwrap_or_default();
+        let chain = chain_raw.map_or_default(parse_chain);
         // Only a DECLARED chain can conflict. Without one there is nothing to
         // disagree with, and flagging every unattributed edit would bury the
         // real signal under the ordinary case.
