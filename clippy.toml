@@ -1,0 +1,6 @@
+# The oldest toolchain this crate is built with. Clippy reads this so a lint never
+# demands an API newer than it. Rust 1.100 extended `map_unwrap_or` to suggest
+# `Option::map_or_default`, which builders still on 1.98 cannot compile, and that
+# broke every pull request with `-D warnings`. Raise this only when the oldest
+# supported builder moves.
+msrv = "1.98"
