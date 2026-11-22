@@ -202,9 +202,14 @@ mod linux {
         if samples.len() > 100 {
             return Ok(samples);
         }
-        if snapshot.entries.len() >= MAX_KEYS && !snapshot.entries.contains_key(&key)
-            && let Some(oldest) = snapshot.entries.iter().min_by_key(|(_, e)| e.at)
-                .map(|(k, _)| k.clone())
+        let full_new_key =
+            snapshot.entries.len() >= MAX_KEYS && !snapshot.entries.contains_key(&key);
+        if let Some(oldest) = snapshot
+            .entries
+            .iter()
+            .filter(|_| full_new_key)
+            .min_by_key(|(_, e)| e.at)
+            .map(|(k, _)| k.clone())
         {
             snapshot.entries.remove(&oldest);
         }
