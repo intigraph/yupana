@@ -52,6 +52,16 @@ mod linux {
     use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
     use std::path::Path;
 
+    // Unlock explicitly before closing: another thread may fork while this
+    // descriptor is held, and an inherited duplicate can outlive our File.
+    struct RefreshLock(File);
+
+    impl Drop for RefreshLock {
+        fn drop(&mut self) {
+            let _ = self.0.unlock();
+        }
+    }
+
     const TTL: u64 = 60;
     const MAX_BYTES: u64 = 1024 * 1024;
     const MAX_KEYS: usize = 128;
@@ -189,6 +199,7 @@ mod linux {
                 "legacy disk-history refresh in progress".into(),
             ));
         }
+        let _held = RefreshLock(lock);
         let mut snapshot = load(root, uid);
         if let Some(samples) = hit(&snapshot, &key, now) {
             return Ok(samples);
@@ -345,6 +356,22 @@ mod linux {
             assert!(cached(Some(&root), "e", "s", "f", 160, || panic!("parallel fetch")).is_err());
             drop(lock);
             cached(Some(&root), "e", "s", "f", 160, || Ok(samples(2))).unwrap();
+        }
+
+        #[test]
+        fn release_unlocks_even_while_an_inherited_descriptor_survives() {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("lock");
+            let file = File::create(&path).unwrap();
+            file.try_lock().unwrap();
+            // A duplicate shares the open-file description, just like fork.
+            let inherited = file.try_clone().unwrap();
+            assert!(File::open(&path).unwrap().try_lock().is_err());
+            drop(RefreshLock(file));
+            let next = File::open(&path).unwrap();
+            next.try_lock().unwrap();
+            next.unlock().unwrap();
+            drop(inherited);
         }
 
         #[test]
