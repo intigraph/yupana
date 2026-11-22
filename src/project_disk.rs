@@ -12,6 +12,9 @@ use crate::errors::{Error, Result};
 #[path = "project_disk_aggregate.rs"]
 pub(crate) mod aggregate;
 
+#[path = "project_disk_cache.rs"]
+mod legacy_cache;
+
 /// One historical consumption sample, in bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiskSample {
@@ -139,7 +142,9 @@ pub(crate) fn fetch_prediction(
     // A first class summary is not evidence that retained history was seeded.
     // Keep the legacy floor until migration has an authoritative completion
     // contract. Errors from either reader remain UNKNOWN, never a lower bound.
-    let samples = fetch_legacy_samples(endpoint, signature, filesystem)?;
+    let samples = legacy_cache::get_or_fetch(endpoint, signature, filesystem, || {
+        fetch_legacy_samples(endpoint, signature, filesystem)
+    })?;
     let legacy = p90(&samples).map(|bytes| Prediction {
         bytes,
         samples: samples.len() as u64,
