@@ -826,3 +826,106 @@ fn a_cfg_duplicate_source_tree_now_conforms_end_to_end() {
         v.violations
     );
 }
+
+#[test]
+fn terminal_http_refusals_keep_diagnostics_without_retry_or_bearer() {
+    const CHILD: &str = "YUPANA_HTTP_REFUSAL_FIXTURE";
+    if std::env::var_os(CHILD).is_none() {
+        let home = tempfile::tempdir().unwrap();
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "promote::promote_test::terminal_http_refusals_keep_diagnostics_without_retry_or_bearer"])
+            .env(CHILD, "1")
+            .env("HOME", home.path())
+            .env("XDG_STATE_HOME", home.path().join("state"))
+            .env("QUIPU_SESSION", "http-refusal-fixture")
+            .env("QUIPU_AGENT", "fixture-producer")
+            .env("QUIPU_HARNESS", "service")
+            .env("QUIPU_MODEL", "fixture-model")
+            .env("QUIPU_HOST", "fixture-host")
+            .env("QUIPU_AUTH_TOKEN", "isolated-test-fixture")
+            .env_remove("QUIPU_AUTH_TOKEN_FILE")
+            .output().unwrap();
+        assert!(output.status.success(), "fixture child failed: {output:?}");
+        return;
+    }
+    use std::io::{Read, Write};
+    use std::sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
+    };
+    for (code, body) in [
+        (
+            400,
+            r#"{"error":"write guard refused: namespace ownership"}"#,
+        ),
+        (
+            403,
+            "write guard refused; reflected Bearer isolated-test-fixture",
+        ),
+        (401, "must-not-print-authentication-response"),
+    ] {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let address = listener.local_addr().unwrap();
+        let stop = Arc::new(AtomicBool::new(false));
+        let requests = Arc::new(AtomicUsize::new(0));
+        let (done, count) = (stop.clone(), requests.clone());
+        let server = std::thread::spawn(move || {
+            while !done.load(Ordering::SeqCst) {
+                match listener.accept() {
+                    Ok((mut socket, _)) => {
+                        socket
+                            .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+                            .unwrap();
+                        let mut request = Vec::new();
+                        loop {
+                            let mut buffer = [0u8; 4096];
+                            let n = socket.read(&mut buffer).unwrap();
+                            if n == 0 {
+                                break;
+                            }
+                            request.extend_from_slice(&buffer[..n]);
+                            assert!(request.len() < 65536);
+                            if let Some(split) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                                let headers = String::from_utf8_lossy(&request[..split]);
+                                let length = headers
+                                    .lines()
+                                    .find_map(|line| {
+                                        line.to_ascii_lowercase()
+                                            .strip_prefix("content-length: ")
+                                            .and_then(|s| s.trim().parse::<usize>().ok())
+                                    })
+                                    .unwrap();
+                                if request.len() >= split + 4 + length {
+                                    break;
+                                }
+                            }
+                        }
+                        count.fetch_add(1, Ordering::SeqCst);
+                        write!(socket, "HTTP/1.1 {code} Refused\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(std::time::Duration::from_millis(5));
+                    }
+                    Err(error) => panic!("fixture accept failed: {error}"),
+                }
+            }
+        });
+        let result = write_knot(&format!("http://{address}"), CONFORMING, "fixture source");
+        stop.store(true, Ordering::SeqCst);
+        server.join().unwrap();
+        let error = result.unwrap_err().to_string();
+        assert_eq!(requests.load(Ordering::SeqCst), 1, "4xx must not retry");
+        assert!(!error.contains("isolated-test-fixture"));
+        assert!(!error.contains(CONFORMING));
+        if code == 401 {
+            assert!(
+                !error.contains(body),
+                "401 retains its credential-specific path"
+            );
+        } else {
+            assert!(error.contains(&format!("status {code}")));
+            assert!(error.contains("write guard refused"));
+        }
+    }
+}

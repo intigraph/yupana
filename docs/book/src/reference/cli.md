@@ -166,6 +166,14 @@ Two things make that actionable, and both are load-bearing:
   between runs because the content is regenerated — without the payload, the one
   fact the error gives you is unusable.
 
+HTTP 4xx refusals also report the response body, for example
+`status 400; response: {"error":"write guard refused: namespace ownership"}`.
+The diagnostic reads at most 4 KiB, redacts the configured bearer, and replaces
+terminal control characters with spaces. An oversized or unreadable body gets
+an explicit bounded diagnostic instead. HTTP 401 keeps its credential-specific
+handling; no 4xx refusal is retried. A guard refusal is distinct from SHACL
+validation, and a successful offline validation does not authorize a write.
+
 The dump also lands on an invalid-Turtle failure and on a partial chunked write.
 It goes to `$YUPANA_PROMOTE_DUMP_DIR`, else the system temp dir.
 

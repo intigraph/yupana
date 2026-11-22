@@ -2,6 +2,9 @@
 
 use crate::errors::{Error, Result};
 
+#[path = "promote_http_error.rs"]
+mod http_error;
+
 /// Post validated Turtle to Quipu's `/knot`. Returns the number of triples the
 /// transaction reports as present for these facts — the count that makes
 /// idempotence checkable (a re-promotion returns the same count, not a larger one).
@@ -83,8 +86,9 @@ pub(super) fn write_knot_request(
             Err(ureq::Error::Status(401, _)) => {
                 return Err(Error::Promote(crate::quipu_auth::rejected(endpoint, None)));
             }
-            Err(ureq::Error::Status(code, _)) if code < 500 => {
-                return Err(Error::Promote(format!("POST {url} failed: status {code}")));
+            Err(ureq::Error::Status(code, response)) if code < 500 => {
+                let detail = http_error::describe(code, response.into_reader(), &auth);
+                return Err(Error::Promote(format!("POST {url} failed: {detail}")));
             }
             Err(e) => {
                 last_err = e.to_string();
