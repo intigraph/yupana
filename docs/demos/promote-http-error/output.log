@@ -1,0 +1,7 @@
+Script started on 2026-11-22 02:12:01-05:00 [COMMAND="python3 docs/demos/promote-http-error/demo.py" <not executed on terminal>]
+before: one request, refused (exit 1)
+Error: promote error: atomic snapshot result unconfirmed; a write may have landed: promote error: POST http://127.0.0.1:44489/knot failed: status 400
+after: one request, refused (exit 1)
+Error: promote error: atomic snapshot result unconfirmed; a write may have landed: promote error: POST http://127.0.0.1:44489/knot failed: status 400; response: {"error": "write guard refused: owner grant missing; Bearer [REDACTED]"}
+
+Script done on 2026-11-22 02:12:02-05:00 [COMMAND_EXIT_CODE="0"]
