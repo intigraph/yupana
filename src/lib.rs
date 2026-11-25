@@ -195,6 +195,7 @@ pub mod sparql_steps;
 pub mod state;
 #[cfg(all(test, feature = "quipu"))]
 mod test_stub;
+pub mod textrule_message;
 pub mod textrules;
 pub mod throttle;
 pub mod trace;
