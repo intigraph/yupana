@@ -58,7 +58,7 @@ fn sections(brief: &Brief) -> Vec<Section> {
         Section {
             label: "governed rules at the edit boundary",
             count: brief.rules.len(),
-            expand: "yupana status rules".to_string(),
+            expand: "yupana status".to_string(),
         },
     ]
 }
@@ -250,5 +250,25 @@ mod tests {
             l0 < full,
             "L0 ({l0} lines) is not smaller than full ({full})"
         );
+    }
+
+    /// aegis-9z52: the rules expansion read `yupana status rules`, which clap
+    /// rejects (unexpected argument). Every `yupana …` expansion must parse as
+    /// a real command, or the census sends the agent to a dead end.
+    #[test]
+    fn every_yupana_expansion_is_a_command_the_cli_accepts() {
+        use clap::Parser;
+        let yupana: Vec<String> = sections(&wide_brief())
+            .into_iter()
+            .map(|s| s.expand)
+            .filter(|e| e.starts_with("yupana "))
+            .collect();
+        assert!(!yupana.is_empty(), "the rules section names a yupana call");
+        for expand in yupana {
+            let argv: Vec<&str> = expand.split_whitespace().collect();
+            if let Err(e) = crate::cli::Cli::try_parse_from(&argv) {
+                panic!("`{expand}` is not a real command: {e}");
+            }
+        }
     }
 }

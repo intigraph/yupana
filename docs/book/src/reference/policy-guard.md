@@ -186,6 +186,12 @@ rationale and exemption. This avoids expensive whole-store optional joins as
 the graph grows. Repository landing lookup starts from `landingPolicy` before
 checking the repository type; its selected fields and filters are unchanged.
 
+A text-rule hit is reported in at most 300 characters. The report names the
+rule id, the matched token, its class and its label, then the rationale
+(`rdfs:comment`). A rationale that does not fit is cut to its first sentence
+and followed by `Full rationale: Quipu <rule> (rdfs:comment).` The rule id and
+the token are never shortened. The full text stays in Quipu.
+
 These reads do not extend the HTTP deadline or the cache TTL. A failed or
 explicitly truncated text-catalogue read fails the refresh and preserves the
 prior cache. Like the other independently fetched policy planes, discovery and

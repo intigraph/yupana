@@ -202,18 +202,16 @@ impl TextRule {
         introduced[start..end].contains(marker)
     }
 
-    /// The model-facing message for one matched token: names the token, the
-    /// rule, its class, and its rationale — a refusal that explains itself.
+    /// The hook-facing message for one matched token: names the token, the
+    /// rule, its class, and why — capped, with the full rationale left in
+    /// Quipu (see [`crate::textrule_message`]).
     fn message_for(&self, token: &str) -> String {
-        let what = self.label.as_deref().unwrap_or(&self.name);
-        let class = self.class.as_deref().map_or_default(|c| format!(" ({c})"));
-        let why = self
-            .rationale
-            .as_deref()
-            .map_or_default(|r| format!(" {r}"));
-        format!(
-            "governed text rule `{}`: the edit introduces `{token}`{class} — {what}.{why}",
-            self.name
+        crate::textrule_message::render(
+            &self.name,
+            self.label.as_deref().unwrap_or(&self.name),
+            self.class.as_deref(),
+            self.rationale.as_deref(),
+            token,
         )
     }
 }
