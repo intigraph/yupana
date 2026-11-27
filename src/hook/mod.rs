@@ -38,6 +38,8 @@ mod delegate_line;
 #[cfg(feature = "quipu")]
 mod disk_guard;
 #[cfg(feature = "quipu")]
+mod disk_record;
+#[cfg(feature = "quipu")]
 mod landing_attribution;
 /// The governed landing policy's decision procedure — pure, every arm testable
 /// without a graph. Gated with the projection that resolves its authority.
@@ -64,6 +66,8 @@ mod scope_notice;
 #[cfg(feature = "quipu")]
 mod session_start;
 
+#[cfg(feature = "quipu")]
+pub use disk_record::run_disk_record;
 pub use post_bash::run_post_bash;
 pub use post_edit::{advisory_for, run_post_edit};
 #[cfg(feature = "quipu")]
@@ -77,6 +81,9 @@ pub use session_start::run_session_start;
 // The resident-graph measurement path (FR-31): the daemon measures an edit against
 // its resident graph via `measure_with_graph`, returning the same `Sizing` the
 // transient path does. Crate-visible so `crate::daemon` can call it.
+/// The off-path disk-delta writer's `/update` bound (aegis-u4f).
+#[cfg(feature = "quipu")]
+pub(crate) use disk_record::WRITE_TIMEOUT as DISK_WRITE_TIMEOUT;
 pub(crate) use measure::{measure_with_graph, Sizing};
 
 use std::path::{Path, PathBuf};
