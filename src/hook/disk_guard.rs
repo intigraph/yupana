@@ -180,14 +180,20 @@ fn finish_previous(session: &str, now: &DiskReading, endpoint: &str) -> Option<S
     }
     let delta = (i128::from(pending.available_bytes) - i128::from(now.available_bytes))
         .clamp(i128::from(i64::MIN), i128::from(i64::MAX)) as i64;
-    match post_sample(
-        endpoint,
-        &pending,
+    let job = super::disk_record::Job {
+        endpoint: endpoint.into(),
+        signature: pending.signature,
+        filesystem: pending.filesystem,
+        observed_at: pending.observed_at,
         delta,
-        (session != "anonymous").then_some(session),
-    ) {
+        session: (session != "anonymous").then(|| session.to_string()),
+    };
+    // Off the hook path (aegis-u4f): the inline write was cancelled by its own
+    // client timeout under the harness's kill. Outcome lands in the spool as
+    // `disk_delta_write`.
+    match super::disk_record::hand_off(&job) {
         Ok(()) => Some(format!(
-            "recorded previous-command delta {}",
+            "previous-command delta {} handed to background writer",
             signed_bytes(delta)
         )),
         Err(e) => Some(format!("previous-command delta NOT RECORDED ({e})")),
@@ -258,22 +264,6 @@ fn state_path(session: &str) -> Option<PathBuf> {
     Some(
         root.join("yupana/disk")
             .join(format!("{}.json", hex::encode(&digest[..12]))),
-    )
-}
-
-fn post_sample(
-    endpoint: &str,
-    pending: &Pending,
-    delta: i64,
-    session: Option<&str>,
-) -> Result<(), String> {
-    crate::project_disk::aggregate::record(
-        endpoint,
-        &pending.signature,
-        &pending.filesystem,
-        &pending.observed_at,
-        delta,
-        session,
     )
 }
 

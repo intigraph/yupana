@@ -252,7 +252,7 @@ fn send(
         .set("Authorization", &format!("Bearer {token}"));
     let request = crate::quipu_provenance::with_hook_session(request, session);
     let response = match request
-        .timeout(std::time::Duration::from_secs(3))
+        .timeout(crate::hook::DISK_WRITE_TIMEOUT)
         .send_string(query)
     {
         Ok(response) => response,

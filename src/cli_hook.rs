@@ -29,6 +29,10 @@ pub(crate) enum HookEvent {
     /// rules — so it reaches the agent BEFORE its first edit, not at the
     /// first denial (quipu feature; silent without it).
     SessionStart,
+    /// Internal: the detached writer `pre-bash` hands its one-command-late disk
+    /// delta to, so the quipu `/update` runs off the hook path (aegis-u4f).
+    #[value(hide = true)]
+    DiskRecord,
 }
 
 /// Dispatch a hook event.
@@ -64,6 +68,10 @@ pub(crate) fn run(
         HookEvent::PostEdit => crate::hook::run_post_edit(tenant),
         HookEvent::PostBash => crate::hook::run_post_bash(),
         HookEvent::PreBash => crate::hook::run_pre_bash(),
+        #[cfg(feature = "quipu")]
+        HookEvent::DiskRecord => crate::hook::run_disk_record(),
+        #[cfg(not(feature = "quipu"))]
+        HookEvent::DiskRecord => Ok(()),
         HookEvent::PreEdit => crate::hook::run_pre_edit(tenant, config),
         #[cfg(feature = "quipu")]
         HookEvent::SessionStart => crate::hook::run_session_start(config),

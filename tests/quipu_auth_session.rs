@@ -145,6 +145,9 @@ fn hook(
         .env("XDG_CONFIG_HOME", home.join(".config"))
         .env("XDG_STATE_HOME", home.join("state"))
         .env("YUPANA_DISK_STATE_DIR", home.join("disk"))
+        // The delta write runs in a detached child (aegis-u4f); wait for it so
+        // the write counts below are read after it, not raced.
+        .env("YUPANA_DISK_RECORD_WAIT", "1")
         .env_remove("QUIPU_AUTH_TOKEN")
         .env_remove("QUIPU_AUTH_TOKEN_FILE")
         .stdin(Stdio::piped())

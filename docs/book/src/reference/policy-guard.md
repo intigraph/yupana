@@ -476,6 +476,15 @@ upper bounds; no raw per-run sample list is retained. A guarded atomic update
 replaces the coherent summary. Conflicts have bounded retries; authentication
 refusals do not retry, and ambiguous writes require readback before success.
 
+The summary write runs **off the hook path**. The hook hands the closed sample
+to a detached `yupana hook disk-record` child in its own process group and
+returns at once. The child writes with a 15 s client bound and spools a
+`disk_delta_write` event with the outcome (`recorded`, `not_recorded` and why,
+or `unreadable_job`). Before this, the write ran inline under a 3 s bound inside
+a hook the harness kills at 5 s. Quipu's `/update` p99 was 4.8 s, so writes were
+regularly cancelled mid-flight (aegis-u4f). The child keeps the `yupana-hook`
+caller label and the hook's provenance environment.
+
 For advice, the guard takes the greater of the exact class maximum and the
 legacy signature's latest-100-sample nearest-rank p90. A first class summary
 does not prove historical seeding completed, so it cannot remove the retained
