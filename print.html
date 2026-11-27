@@ -2757,6 +2757,14 @@ fixed 66-bucket histogram. Approximate p90/p95 values are conservative bucket
 upper bounds; no raw per-run sample list is retained. A guarded atomic update
 replaces the coherent summary. Conflicts have bounded retries; authentication
 refusals do not retry, and ambiguous writes require readback before success.</p>
+<p>The summary write runs <strong>off the hook path</strong>. The hook hands the closed sample
+to a detached <code>yupana hook disk-record</code> child in its own process group and
+returns at once. The child writes with a 15 s client bound and spools a
+<code>disk_delta_write</code> event with the outcome (<code>recorded</code>, <code>not_recorded</code> and why,
+or <code>unreadable_job</code>). Before this, the write ran inline under a 3 s bound inside
+a hook the harness kills at 5 s. Quipu's <code>/update</code> p99 was 4.8 s, so writes were
+regularly cancelled mid-flight (aegis-u4f). The child keeps the <code>yupana-hook</code>
+caller label and the hook's provenance environment.</p>
 <p>For advice, the guard takes the greater of the exact class maximum and the
 legacy signature's latest-100-sample nearest-rank p90. A first class summary
 does not prove historical seeding completed, so it cannot remove the retained
