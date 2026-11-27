@@ -112,6 +112,9 @@ pub mod project_exposure;
 /// with it.
 #[cfg(feature = "quipu")]
 pub mod project_grounding;
+/// Governed quiet-time build holds, projected from Quipu.
+#[cfg(feature = "quipu")]
+pub mod project_hold;
 /// Governed LANDING policy — who may put code on a repository's protected ref.
 /// Holds the owner-of predicate, whose evidence is a graph fact rather than
 /// anything readable from the command line. Gated with the projection it reads.

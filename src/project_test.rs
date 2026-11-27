@@ -624,6 +624,7 @@ fn stub_quipu(serve: usize) -> String {
                 || request.contains("candidateSource")
                 || request.contains("?selector ?predicate")
                 || request.contains("aegis:MemoryHeavyCommand")
+                || request.contains("aegis:HeavyBuildCommand")
                 || request.contains("aegis:landingPolicy")
                 || request.contains("session-trajectory")
                 || request.contains("landing-admission")
@@ -665,6 +666,7 @@ fn seed_cache(path: &std::path::Path, endpoint: &str, written_at: u64) {
             text_rules: Vec::new(),
             tripwires: Vec::new(),
             memory_policies: Vec::new(),
+            hold_policies: Vec::new(),
             trajectory_policies: None,
             admission_policies: None,
             landing_policies: None,
@@ -774,7 +776,7 @@ fn a_successful_refresh_persists_the_projection_for_the_next_process() {
     // refresh here.) This count is an assertion, not a fixture detail: adding
     // a plane without updating it fails these tests, which is how a silently
     // half-projected registry gets caught.
-    let endpoint = stub_quipu(8);
+    let endpoint = stub_quipu(9);
 
     let mut registry = ProjectionRegistry::new(&endpoint);
     assert_eq!(
@@ -807,7 +809,7 @@ fn an_out_of_band_refresh_always_contacts_quipu_and_advances_the_cache() {
     let cache = dir.path().join("projection.json");
     seed_cache(&cache, "http://old-endpoint.invalid", 1_000);
     // Eight requests per refresh — see the sibling test for the enumeration.
-    let endpoint = stub_quipu(8);
+    let endpoint = stub_quipu(9);
 
     let mut registry = ProjectionRegistry::new(&endpoint);
     registry

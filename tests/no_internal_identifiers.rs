@@ -263,6 +263,7 @@ fn the_ontology_namespace_allowance_is_still_needed_and_still_bounded() {
         "src/hook/config_drift.rs",
         // Disk observations are promoted into the same deployed ontology.
         "src/project_exposure.rs",
+        "src/project_hold.rs",
         // The governed LANDING catalogue query names the same deployed ontology
         // its sibling projections do: which repository declares a landing rule,
         // and who owns it, are facts under this base.
