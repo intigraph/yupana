@@ -107,6 +107,7 @@ fn a_projection(endpoint: &str, written_at: u64) -> CachedProjection {
         text_rules: vec![a_text_rule("internal-hostname")],
         tripwires: Vec::new(),
         memory_policies: Vec::new(),
+        hold_policies: Vec::new(),
         trajectory_policies: None,
         admission_policies: None,
         landing_policies: None,

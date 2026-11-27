@@ -16,11 +16,10 @@ pub use crate::project_queries::{EXPOSURE_POLICY_IRI, POLICY_QUERY, TEXT_POLICY_
 /// `effect` that decides what a violation does (independent of the local
 /// `[yupana.policy] mode`, so a quipu `deny` denies and a `warn` advises).
 ///
-/// Serializable so the projection can be PERSISTED between hook invocations
-/// ([`crate::projection_cache`]). Every field round-trips: a cache that dropped
-/// `effect`, the declared class or the hosting claim would serve a policy that
-/// blocks differently from the one quipu declared, which is a worse failure
-/// than not caching at all.
+/// Serializable so the projection can be PERSISTED ([`crate::projection_cache`]).
+/// Every field round-trips: a cache that dropped `effect`, the declared class or
+/// the hosting claim would serve a policy that blocks differently from the one
+/// quipu declared, which is worse than not caching at all.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ProjectedPolicy {
     /// The structural rule, decoded into the same shape local config uses.
@@ -205,6 +204,7 @@ pub struct ProjectionRegistry {
     text_rules: Vec<TextRule>,
     pub(crate) tripwires: Vec<crate::project_tripwire::ProjectedTripwire>,
     pub(crate) memory_policies: Vec<crate::project_memory::MemoryPolicy>,
+    pub(crate) hold_policies: Vec<crate::project_hold::HoldPolicy>,
     pub(crate) trajectory_policies: Option<Vec<crate::project_trajectory::TrajectoryPolicy>>,
     pub(crate) admission_policies: Option<Vec<crate::project_admission::ProjectedAdmission>>,
     /// Last-known governed LANDING policies — which repositories declare who
@@ -273,6 +273,7 @@ impl ProjectionRegistry {
             text_rules: Vec::new(),
             tripwires: Vec::new(),
             memory_policies: Vec::new(),
+            hold_policies: Vec::new(),
             trajectory_policies: None,
             admission_policies: None,
             landing_policies: None,
@@ -319,7 +320,7 @@ impl ProjectionRegistry {
             fetch_text_rules(&self.endpoint),
             crate::project_grounding::fetch_grounded_rules(&self.endpoint),
             crate::project_tripwire::fetch_tripwires(&self.endpoint),
-            crate::project_memory::fetch_memory_policies(&self.endpoint),
+            crate::project_hold::fetch_command_policies(&self.endpoint),
             crate::project_landing::fetch_landing_policies(&self.endpoint),
             crate::project_trajectory::fetch_trajectory_policies(&self.endpoint),
             crate::project_admission::fetch_admission_policies(&self.endpoint),
@@ -329,7 +330,7 @@ impl ProjectionRegistry {
                 Ok(text_rules),
                 Ok(grounded_rules),
                 Ok(tripwires),
-                Ok(memory_policies),
+                Ok((memory_policies, hold_policies)),
                 Ok(landing_policies),
                 Ok(trajectory_policies),
                 Ok(admission_policies),
@@ -338,7 +339,7 @@ impl ProjectionRegistry {
                 self.policies = policies;
                 self.text_rules = text_rules;
                 self.tripwires = tripwires;
-                self.memory_policies = memory_policies;
+                (self.memory_policies, self.hold_policies) = (memory_policies, hold_policies);
                 self.landing_policies = Some(landing_policies);
                 self.trajectory_policies = Some(trajectory_policies);
                 self.admission_policies = Some(admission_policies);

@@ -78,6 +78,8 @@ pub fn run_pre_bash() -> anyhow::Result<()> {
         #[cfg(not(feature = "quipu"))]
         let disk = super::pre_edit::Outcome::Allow;
         let memory = super::memory_guard::check(&buf, &cmd);
+        // Quiet-time build hold (media playback): refuses heavy builds only.
+        let hold = super::hold_guard::check(&buf, &cmd);
         // The governed LANDING policy — who may put code on a repository's
         // protected ref. Same chain, so the mode stays the single ceiling.
         let landing = super::landing_guard::check(&buf, &cmd);
@@ -88,7 +90,7 @@ pub fn run_pre_bash() -> anyhow::Result<()> {
         } else {
             // Folded rather than nested: a plane is added by extending this
             // list, not by wrapping the expression one layer deeper.
-            let outcome = [memory, landing, ci, disk]
+            let outcome = [hold, memory, landing, ci, disk]
                 .into_iter()
                 .fold(super::pre_edit::Outcome::Allow, combine_advisories);
             match outcome {

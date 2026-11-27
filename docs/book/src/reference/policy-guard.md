@@ -453,6 +453,48 @@ the same hook contract before execution (for example from a scheduler wrapper);
 installing the binary alone does not interpose on arbitrary processes. Do not
 claim cron coverage until the cron entry itself is wired through that seam.
 
+### Governed quiet-time build hold
+
+A media quiet-time hold (Plex playing) keeps the fleet launching and working;
+it refuses only heavy local builds. The launcher no longer enforces that, so the
+pre-Bash hook does. A `Policy` aimed at `aegis:HeavyBuildCommand` owns all of the
+data: the live command regex in its `Selector`/`Predicate`, and a
+`quiet_time_hold` `OperatingPoint` that names the signal. Its `evidenceSource`
+is the Prometheus textfile the fleet writes, its `calibrationBasis` is the exact
+gauge series to read, and `maxAgeSeconds` bounds how old that file may be. An
+optional `retryAdvice` says when to retry.
+
+```turtle
+aegis:policy_media_build_hold a aegis:Policy ;
+    rdfs:label "media quiet-time build hold" ;
+    aegis:targets "aegis:HeavyBuildCommand" ; aegis:boundary "action" ;
+    aegis:effect "deny" ; aegis:constraintClass "hard" ;
+    aegis:verificationPoint "PAG" ;
+    aegis:selector [ aegis:evidenceSource "bash-command" ; aegis:tier "live" ] ;
+    aegis:predicate [ aegis:matchType "must-match" ; aegis:tier "live" ;
+        aegis:evidenceSource
+          "(^|[;&|[:space:]])(cargo[[:space:]]+(build|test|clippy)|just[[:space:]]+(build|test|lint|check))" ] ;
+    aegis:operatingPoint [ aegis:kind "quiet_time_hold" ;
+        aegis:calibrationBasis "aegis_quiet_time_hold_active{effect=\"no-heavy-builds\"}" ;
+        aegis:evidenceSource "/var/lib/node_exporter/textfile/gaming.prom" ;
+        aegis:maxAgeSeconds "300" ;
+        aegis:retryAdvice "retry after media stops plus lift_delay (`st fleet hold all --status` exits 0)" ] .
+```
+
+While the series reads `1`, a matching command is refused. The refusal names the
+policy and the series, and gives the retry advice. Commands the regex does not
+select (launches, `git`, `st`, editors) are never touched. **The signal fails
+closed:** an unreadable or stale textfile, a missing series, or a value other
+than `0`/`1` counts as UNKNOWN, and the build is refused. That includes a fleet
+that still writes only the unlabelled `aegis_quiet_time_hold_active` gauge, so
+mint the policy only after the per-effect gauge ships. **The policy fails open:**
+a failed projection is a loud notice, the same as the memory arm. The deployment
+mode is the ceiling here too. A hard policy denies only under `mode =
+"enforce"`; under `advise` it emits a system message and a `hold_policy` metric.
+The hook projects policy only for commands that contain a known build word
+(`cargo`, `just`, `make`, `go`, `npm`, `docker` and similar), so a policy that
+selects anything else needs that list widened too.
+
 ### Quipu-backed disk-impact advisory
 
 The pre-Bash hook also learns the disk cost of commands that commonly create

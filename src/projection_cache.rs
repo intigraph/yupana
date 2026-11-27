@@ -87,6 +87,10 @@ pub struct CachedProjection {
     /// than making the whole guard fail open during a live projection failure.
     #[serde(default)]
     pub memory_policies: Vec<crate::project_memory::MemoryPolicy>,
+    /// Last-known quiet-time build holds. A cache predating the plane restores
+    /// an empty set: it never held one, and the next refresh fills it.
+    #[serde(default)]
+    pub hold_policies: Vec<crate::project_hold::HoldPolicy>,
     /// None distinguishes pre-channel caches from a queried empty catalogue.
     #[serde(default)]
     pub trajectory_policies: Option<Vec<crate::project_trajectory::TrajectoryPolicy>>,

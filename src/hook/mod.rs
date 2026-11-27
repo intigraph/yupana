@@ -39,15 +39,16 @@ mod delegate_line;
 mod disk_guard;
 #[cfg(feature = "quipu")]
 mod disk_record;
+/// The governed landing policy's I/O half — evidence gathering and the hook
+/// outcome. UNGATED like `memory_guard`: it carries its own no-op for a build
+/// without the projection, so the pre-bash chain has one shape in every build.
+mod hold_guard;
 #[cfg(feature = "quipu")]
 mod landing_attribution;
 /// The governed landing policy's decision procedure — pure, every arm testable
 /// without a graph. Gated with the projection that resolves its authority.
 #[cfg(feature = "quipu")]
 pub mod landing_decision;
-/// The governed landing policy's I/O half — evidence gathering and the hook
-/// outcome. UNGATED like `memory_guard`: it carries its own no-op for a build
-/// without the projection, so the pre-bash chain has one shape in every build.
 mod landing_guard;
 mod measure;
 mod memory_guard;
