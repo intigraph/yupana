@@ -133,6 +133,7 @@ pub(crate) fn promote_subset(
     dry_run: bool,
     list_keys: bool,
     graph: Option<&str>,
+    owner: Option<&crate::promote_owner::OwnerTarget>,
 ) -> anyhow::Result<()> {
     // `--all` writes every partition, so the file set is the projection's own —
     // resolved here rather than in the preflight, because it is not knowable
@@ -207,14 +208,25 @@ pub(crate) fn promote_subset(
     let mut wrote = 0usize;
     let mut triples = 0usize;
     for w in &plan.writes {
-        match crate::promote::promote_snapshot_into_graph_at(
-            ep,
-            &w.turtle,
-            source,
-            &w.key,
-            Some(valid_from),
-            graph,
-        ) {
+        let outcome = if let Some(owner) = owner {
+            crate::promote::promote_to_owner(
+                owner,
+                &w.turtle,
+                source,
+                Some(&w.key),
+                Some(valid_from),
+            )
+        } else {
+            crate::promote::promote_snapshot_into_graph_at(
+                ep,
+                &w.turtle,
+                source,
+                &w.key,
+                Some(valid_from),
+                graph,
+            )
+        };
+        match outcome {
             Ok(outcome) => {
                 let mut sink = std::io::sink();
                 if !outcome.report(&mut sink)? {

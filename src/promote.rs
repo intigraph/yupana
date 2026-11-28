@@ -437,6 +437,39 @@ pub fn promote_snapshot_into_graph_at(
     }
 }
 
+/// Promote the same validated chunks or atomic snapshot through an explicit owner.
+pub fn promote_to_owner(
+    target: &crate::promote_owner::OwnerTarget,
+    turtle: &str,
+    source: &str,
+    snapshot: Option<&str>,
+    valid_from: Option<&str>,
+) -> Result<Promotion> {
+    let chunks = match prepare(turtle, source)? {
+        Prepared::Ready(chunks) => chunks,
+        Prepared::Refused(refusal) => return Ok(refusal),
+    };
+    // Snapshot replacement remains ONE atomic request, exactly like legacy.
+    let chunks = if snapshot.is_some() {
+        vec![turtle.to_owned()]
+    } else {
+        chunks
+    };
+    let mut summary = WriteSummary {
+        count: 0,
+        tx_ids: Vec::new(),
+        chunks: chunks.len(),
+        valid_from: Vec::new(),
+    };
+    for chunk in chunks {
+        let result = target.write(&chunk, source, snapshot, valid_from)?;
+        summary.count += result.count;
+        summary.tx_ids.extend(result.tx_id);
+        summary.valid_from.extend(result.valid_from);
+    }
+    Ok(Promotion::Wrote(summary))
+}
+
 /// The result of a full promotion: it either wrote, or refused whole.
 #[derive(Debug)]
 pub enum Promotion {

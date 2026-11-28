@@ -126,6 +126,43 @@ printing a token or making a write. `configured_acceptance_unproven` means a
 credential was found, not that the server accepted it; use `tambo doctor` for
 an authenticated verification.
 
+## `yupana promote --owner` — enrolled owner transport
+
+Legacy `/knot` remains the default. Select the owner route explicitly:
+
+```sh
+yupana promote --owner --to https://quipu.example \
+  --owner-pins /private/enrollment/owner-pins.json \
+  --owner-credential-file /private/credentials/code-promote \
+  --owner-custody /private/attempts --replace-snapshot
+```
+
+The pin file is enrollment output, never discovered or refreshed by promotion.
+Its version 1 JSON object contains `endpoint` (matching `--to`), `graph`,
+`catalog_revision` and `owner_generation` (unsigned integers), and `policy`.
+Missing, malformed or conflicting pins refuse before transmission. If `--graph`
+is also supplied it must match the pinned graph. The credential file contains
+only the scoped bearer; ambient credentials are ignored. A changed owner
+instance requires trusted grant re-enrollment and new enrollment output.
+
+The same validation, deterministic additive chunks, atomic repository snapshot,
+and per-file subset snapshots feed `/owner/knot`. Every attempt gets a new v2
+write ID and persists the exact original request and pins in custody before its
+single send. Custody contains no bearer. Redirects, automatic write retries and
+fallback to legacy are disabled. Status must confirm the same ID and commit
+receipt before a chunk is counted as complete. Only an attempt still admitted
+may be sealed; committed or finished attempts are never sealed.
+
+Use an existing private custody directory. A concurrent command or retained
+crash lock refuses; an unresolved original attempt prevents a later promotion
+from inventing a new ID for the same uncertain effect. Inspect its exact status
+with the retained original request, pins and credential before releasing custody.
+Confirmed finished/sealed records remain as evidence. A lost valid-time receipt
+can still require inspection after a confirmed commit; an error is never proof
+that nothing was written. Earlier confirmed chunks can remain after a later
+failure. `--owner` cannot be combined with `--dry-run` or `--list-keys`; use those
+read-only modes separately to inspect the projection without credentials.
+
 ## `yupana promote --dry-run` — validate without writing
 
 `--dry-run` extracts the projection and runs the **same** SHACL gate a real

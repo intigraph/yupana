@@ -35,6 +35,18 @@ pub struct Subset<'a> {
     clap::ArgGroup::new("subset_scope").args(["base", "all"]).multiple(false)
 ))]
 pub struct PromoteArgs {
+    /// Use the enrolled owner route; legacy /knot remains the default.
+    #[arg(long, requires_all = ["owner_pins", "owner_credential_file", "owner_custody"], conflicts_with_all = ["dry_run", "list_keys"])]
+    pub owner: bool,
+    /// Enrollment-produced pins; never inferred from the target.
+    #[arg(long, requires = "owner")]
+    pub owner_pins: Option<PathBuf>,
+    /// Scoped bearer file; owner mode ignores ambient credentials.
+    #[arg(long, requires = "owner")]
+    pub owner_credential_file: Option<PathBuf>,
+    /// Existing private directory retaining exact original attempts.
+    #[arg(long, requires = "owner")]
+    pub owner_custody: Option<PathBuf>,
     /// Commit-ish to promote.
     #[arg(long, default_value = "HEAD")]
     pub commit: String,
@@ -131,6 +143,10 @@ pub struct PromoteArgs {
     pub path: PathBuf,
 }
 
+#[path = "cli_promote_owner.rs"]
+mod owner;
+pub use owner::OwnerFiles;
+
 impl Cli {
     /// Does `[yupana.quipu] promote_on` admit a promotion invoked by `trigger`?
     ///
@@ -191,6 +207,7 @@ impl Cli {
         replace_snapshot: bool,
         append: bool,
         subset: Option<&Subset<'_>>,
+        owner_files: Option<&OwnerFiles<'_>>,
     ) -> anyhow::Result<()> {
         // `--to` IS THE AUTHORIZATION, and it is the only one (aegis-o2h97).
         //
@@ -280,6 +297,23 @@ impl Cli {
             )?),
             None => None,
         };
+        let owner = owner_files
+            .map(|files| {
+                let endpoint = endpoint
+                    .as_deref()
+                    .ok_or_else(|| anyhow::anyhow!("owner mode requires explicit --to"))?;
+                let target = crate::promote_owner::OwnerTarget::load(
+                    endpoint,
+                    files.pins,
+                    files.credential,
+                    files.custody,
+                )?;
+                if graph.is_some_and(|graph| graph != target.graph()) {
+                    anyhow::bail!("--graph disagrees with enrollment pins");
+                }
+                Ok::<_, anyhow::Error>(target)
+            })
+            .transpose()?;
         let mut turtle = crate::export::to_turtle_at(path, &repo, commit)?;
         // A promotion that extracted NOTHING is not a promotion — it is a green
         // empty write (measured: a Python repo "promoted: 0 triples" with a
@@ -345,6 +379,7 @@ impl Cli {
                 dry_run,
                 sub.list_keys,
                 graph,
+                owner.as_ref(),
             );
         }
         // ⛔ REFUSE THE BARE APPEND PATH (aegis-rz75m6, sattler 2026-09-07).
@@ -382,32 +417,42 @@ impl Cli {
             );
             std::process::exit(2);
         }
-        let outcome = match (dry_run, &endpoint) {
-            (true, ep) => crate::promote::dry_run(ep.as_deref(), &turtle, &source)?,
-            (false, Some(ep)) if replace_snapshot => {
-                crate::promote::promote_snapshot_into_graph_at(
+        let outcome = if let Some(owner) = owner.as_ref() {
+            crate::promote::promote_to_owner(
+                owner,
+                &turtle,
+                &source,
+                replace_snapshot.then(|| format!("code:{repo}")).as_deref(),
+                Some(&valid_from),
+            )?
+        } else {
+            match (dry_run, &endpoint) {
+                (true, ep) => crate::promote::dry_run(ep.as_deref(), &turtle, &source)?,
+                (false, Some(ep)) if replace_snapshot => {
+                    crate::promote::promote_snapshot_into_graph_at(
+                        ep,
+                        &turtle,
+                        &source,
+                        &format!("code:{repo}"),
+                        Some(&valid_from),
+                        graph,
+                    )?
+                }
+                (false, Some(ep)) => crate::promote::promote_into_graph_at(
                     ep,
                     &turtle,
                     &source,
-                    &format!("code:{repo}"),
                     Some(&valid_from),
                     graph,
-                )?
-            }
-            (false, Some(ep)) => crate::promote::promote_into_graph_at(
-                ep,
-                &turtle,
-                &source,
-                Some(&valid_from),
-                graph,
-            )?,
-            // Unreachable: the resolution above bails on a write with no target.
-            // Spelled as a refusal rather than an `expect` so that if that match
-            // is ever edited, a missing target degrades to a refusal, never a panic
-            // and never a guessed graph.
-            (false, None) => anyhow::bail!(
+                )?,
+                // Unreachable: the resolution above bails on a write with no target.
+                // Spelled as a refusal rather than an `expect` so that if that match
+                // is ever edited, a missing target degrades to a refusal, never a panic
+                // and never a guessed graph.
+                (false, None) => anyhow::bail!(
                 "no Quipu endpoint for a write: pass --to <url>, or --dry-run to validate only."
             ),
+            }
         };
         let mut out = std::io::stdout();
         let wrote = outcome.report(&mut out)?;
@@ -443,6 +488,7 @@ impl Cli {
         _replace_snapshot: bool,
         _append: bool,
         _subset: Option<&Subset<'_>>,
+        _owner_files: Option<&OwnerFiles<'_>>,
     ) -> anyhow::Result<()> {
         self.planned(
             "promote",
