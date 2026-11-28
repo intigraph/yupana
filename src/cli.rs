@@ -460,11 +460,10 @@ impl Cli {
                 // change to what `read_only` MEANS, and this arm is not the place to
                 // make it silently. Tracked on aegis-o2h97.
                 self.load_config(path)?.write_guard("promotion")?;
-                // FR-19's trigger: `promote_on` decides whether the DECLARED
-                // event promotes at all, before any tree is read.
                 if !self.trigger_admits(path, commit, a.trigger)? {
                     return Ok(());
                 }
+                let owner_files = cli_promote::OwnerFiles::from_args(a)?;
                 self.promote(
                     path,
                     commit,
@@ -479,6 +478,7 @@ impl Cli {
                     // subset" are unrepresentable here rather than merely refused
                     // by clap.
                     subset.as_ref(),
+                    owner_files.as_ref(),
                 )
             }
         }
